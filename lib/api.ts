@@ -1,5 +1,4 @@
 import { removeTokens, setTokens } from './auth';
-import { Brand } from '@/interface/Brand';
 import { useUserStore } from '@/store/useUserStore';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
@@ -197,30 +196,6 @@ export const fetchApi = async <T>(
     console.error('Request error:', error);
     return {
       status: '500',
-      error: 'Network error'
-    };
-  }
-};
-
-export const getBrands = async (): Promise<ApiResponse<Brand[]>> => {
-  try {
-    const response = await fetchWithAuth(`${API_URL}/admin/brands`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch brands');
-    }
-
-    const data = (await response.json()) as Brand[];
-
-    return {
-      status: 'success',
-      data: data,
-      message: 'Brands fetched successfully'
-    };
-  } catch (error) {
-    console.error('Request error:', error);
-    return {
-      status: 'error',
       error: 'Network error'
     };
   }
