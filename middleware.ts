@@ -4,15 +4,6 @@ import { isAuthenticatedServer, refreshAccessToken } from './lib/auth';
 
 // Define protected routes that require module access
 const PROTECTED_ROUTES = [
-  '/cars',
-  '/brands',
-  '/models',
-  '/colors',
-  '/specifications',
-  '/categories',
-  '/bookings',
-  '/booking-options',
-  '/locations',
   '/users',
   '/documentation'
 ];
@@ -27,15 +18,6 @@ function isProtectedRoute(pathname: string): boolean {
 // Get module key from route
 function getModuleKeyFromRoute(pathname: string): string | null {
   const routeMap: Record<string, string> = {
-    '/cars': 'cars',
-    '/brands': 'cars',
-    '/models': 'cars',
-    '/colors': 'cars',
-    '/specifications': 'cars',
-    '/categories': 'cars',
-    '/bookings': 'bookings',
-    '/booking-options': 'bookings',
-    '/locations': 'locations',
     '/users': 'users',
     '/documentation': 'documentation'
   };

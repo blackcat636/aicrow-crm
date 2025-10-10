@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccessToken } from '@/lib/api';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get JWT token from cookies
-    const token = getAccessToken();
+    // Read JWT token from request cookies (server-side)
+    const token = request.cookies.get('access_token')?.value || null;
 
     if (!token) {
       return new NextResponse('Unauthorized', { status: 401 });
