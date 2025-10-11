@@ -1,10 +1,9 @@
 "use client"
 
-import { IconCirclePlusFilled, IconMail, IconChevronRight, type Icon } from "@tabler/icons-react"
+import { IconChevronRight, type Icon } from "@tabler/icons-react"
 import { usePathname } from "next/navigation"
 import React, { useState } from "react"
 
-import { Button } from "@/components/ui/button"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -62,25 +61,6 @@ export function NavMain({
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <SidebarMenuButton
-              tooltip="Quick Create"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
-            >
-              <IconCirclePlusFilled className="tabler-icon tabler-icon-circle-plus-filled" />
-              <span>Quick Create</span>
-            </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <IconMail className="tabler-icon tabler-icon-mail" />
-              <span className="sr-only">Inbox</span>
-            </Button>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <SidebarMenu>
           {items.map((item) => {
             const isActive = pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))
             const hasSubItems = item.items && item.items.length > 0
@@ -114,7 +94,9 @@ export function NavMain({
                         return (
                           <SidebarMenuSubItem key={subItem.title}>
                             <SidebarMenuSubButton asChild isActive={isSubActive}>
-                              <Link href={subItem.url}>
+                              <Link 
+                                href={subItem.url}
+                              >
                                 <span>{subItem.title}</span>
                               </Link>
                             </SidebarMenuSubButton>
@@ -130,7 +112,9 @@ export function NavMain({
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild isActive={isActive}>
-                  <Link href={item.url}>
+                  <Link 
+                    href={item.url}
+                  >
                     {item.icon && <item.icon className="tabler-icon" />}
                     <span>{item.title}</span>
                   </Link>

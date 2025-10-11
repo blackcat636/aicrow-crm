@@ -123,7 +123,10 @@ export const removeTokens = (response?: NextResponse) => {
 export async function isAuthenticatedServer(
   accessToken: string | undefined
 ): Promise<boolean> {
+  console.log('🔐 isAuthenticatedServer called with token:', !!accessToken);
+
   if (!accessToken) {
+    console.log('🔐 No access token provided');
     return false;
   }
 
@@ -131,15 +134,19 @@ export async function isAuthenticatedServer(
     const secret = new TextEncoder().encode(JWT_SECRET);
     const { payload } = await jose.jwtVerify(accessToken, secret);
 
+    console.log('🔐 Token verified successfully, payload:', payload);
+
     // Check if token has not expired
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) {
+      console.log('🔐 Token expired');
       return false;
     }
 
+    console.log('🔐 Token is valid');
     return true;
   } catch (error) {
-    console.error('Token validation error:', error);
+    console.error('🔐 Token validation error:', error);
     return false;
   }
 }

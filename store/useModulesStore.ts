@@ -70,18 +70,39 @@ export const useModulesStore = create<ModuleStore>((set, get) => ({
     moduleKey: string,
     permission: keyof Module['permissions']
   ) => {
-    const { modules } = get();
+    const { modules, error } = get();
     const module = modules.find((m) => m.key === moduleKey);
+
+    // If API failed or no modules loaded, allow access as fallback
+    if (error || modules.length === 0) {
+      console.log(
+        `🔄 Fallback: Allowing access to ${moduleKey} (API error or no modules)`
+      );
+      return true;
+    }
+
     return module ? module.permissions[permission] : false;
   },
 
   isModuleActive: (moduleKey: string) => {
-    const { modules } = get();
+    const { modules, error } = get();
+
+    // If API failed or no modules loaded, consider module active as fallback
+    if (error || modules.length === 0) {
+      return true;
+    }
+
     return modules.some((module) => module.key === moduleKey);
   },
 
   isRouteAccessible: (route: string) => {
-    const { modules } = get();
+    const { modules, error } = get();
+
+    // If API failed or no modules loaded, allow access as fallback
+    if (error || modules.length === 0) {
+      return true;
+    }
+
     return modules.some((module) =>
       module.routes.some(
         (moduleRoute) =>

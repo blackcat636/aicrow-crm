@@ -1,20 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // Mock data for active modules - in real implementation this would come from your NestJS backend
 const ACTIVE_MODULES = [
-  {
-    key: 'dashboard',
-    name: 'Dashboard',
-    routes: ['/'],
-    icon: 'IconDashboard',
-    menu: true,
-    order: 1,
-    permissions: {
-      can_view: true,
-      can_edit: false,
-      can_delete: false
-    }
-  },
   // Only keep Users and Documentation modules active
   {
     key: 'users',
@@ -22,7 +9,7 @@ const ACTIVE_MODULES = [
     routes: ['/users'],
     icon: 'IconUsers',
     menu: true,
-    order: 5,
+    order: 1,
     permissions: {
       can_view: true,
       can_edit: true,
@@ -35,7 +22,7 @@ const ACTIVE_MODULES = [
     routes: ['/documentation'],
     icon: 'IconFileDescription',
     menu: true,
-    order: 6,
+    order: 2,
     permissions: {
       can_view: true,
       can_edit: false,
@@ -44,7 +31,7 @@ const ACTIVE_MODULES = [
   }
 ];
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // In a real implementation, you would:
     // 1. Get user permissions from JWT token

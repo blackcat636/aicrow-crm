@@ -3,7 +3,6 @@
 import { useModulesStore } from '@/store/useModulesStore';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { notFound } from 'next/navigation';
 
 interface ModuleRouteGuardProps {
   children: React.ReactNode;
@@ -56,9 +55,9 @@ export function ModuleRouteGuard({
     }
 
     // Otherwise, check permissions for the module that handles this route
-    const module = getModuleByRoute(pathname);
-    if (module) {
-      const hasRequiredPermission = hasPermission(module.key, requiredPermission);
+    const moduleData = getModuleByRoute(pathname);
+    if (moduleData) {
+      const hasRequiredPermission = hasPermission(moduleData.key, requiredPermission);
       setIsAuthorized(hasRequiredPermission);
     } else {
       // If no specific module found, allow access (for routes like dashboard)
@@ -83,7 +82,7 @@ export function ModuleRouteGuard({
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-semibold">Access Denied</h2>
           <p className="text-muted-foreground">
-            You don't have permission to access this page.
+            You don&apos;t have permission to access this page.
           </p>
         </div>
       </div>

@@ -201,6 +201,42 @@ export const fetchApi = async <T>(
   }
 };
 
+export const register = async (userData: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  referredByCode?: string;
+}) => {
+  const deviceId = getDeviceId();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(deviceId ? { 'x-device-id': deviceId } : {})
+  };
+
+  const response = await globalThis.fetch(
+    `${API_URL}/auth/register-with-referral`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(userData)
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Registration error');
+  }
+
+  if (data.status === 201 && data.data) {
+    return data.data;
+  }
+
+  throw new Error('Unknown error');
+};
+
 export const login = async (email: string, password: string) => {
   const deviceId = getDeviceId();
   const headers: HeadersInit = {

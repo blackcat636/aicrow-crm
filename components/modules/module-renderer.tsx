@@ -6,7 +6,6 @@ import { Module } from '@/interface/Module';
 
 // Dynamic imports for module components
 const moduleComponents = {
-  dashboard: dynamic(() => import('@/modules/dashboard').catch(() => ({ default: () => <div>Dashboard module not available</div> })) ),
   users: dynamic(() => import('@/app/(admin)/users/page').catch(() => ({ default: () => <div>Users module not available</div> })) ),
   documentation: dynamic(() => import('@/app/(admin)/documentation/page').catch(() => ({ default: () => <div>Documentation module not available</div> })) ),
 };

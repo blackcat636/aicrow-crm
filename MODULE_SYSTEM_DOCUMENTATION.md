@@ -222,17 +222,7 @@ export function AppSidebar() {
 **Призначення**: Додатковий захист маршрутів на рівні сервера
 
 ```typescript
-const PROTECTED_ROUTES = [
-  '/cars',
-  '/brands',
-  '/models',
-  '/colors',
-  '/bookings',
-  '/booking-options',
-  '/locations',
-  '/users',
-  '/documents'
-];
+const PROTECTED_ROUTES = ['/users', '/documents'];
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

@@ -58,6 +58,15 @@ export function LoginForm() {
         <div className="w-full max-w-md space-y-8">
             <div className="text-center">
                 <h2 className="text-2xl font-bold">Sign in to system</h2>
+                <p className="mt-2 text-sm text-gray-600">
+                    Don&apos;t have an account?{" "}
+                    <button
+                        onClick={() => router.push("/register")}
+                        className="font-medium text-primary hover:text-primary/80 transition-colors duration-200"
+                    >
+                        Sign up here
+                    </button>
+                </p>
             </div>
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-4">

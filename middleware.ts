@@ -3,10 +3,7 @@ import type { NextRequest } from 'next/server';
 import { isAuthenticatedServer, refreshAccessToken } from './lib/auth';
 
 // Define protected routes that require module access
-const PROTECTED_ROUTES = [
-  '/users',
-  '/documentation'
-];
+const PROTECTED_ROUTES = ['/users', '/documentation'];
 
 // Check if route requires module protection
 function isProtectedRoute(pathname: string): boolean {
@@ -32,10 +29,17 @@ function getModuleKeyFromRoute(pathname: string): string | null {
 }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Check if this is an API route
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   const accessToken = request.cookies.get('access_token')?.value;
   const isAuth = await isAuthenticatedServer(accessToken);
-  const isLoginPage = request.nextUrl.pathname === '/login';
-  const pathname = request.nextUrl.pathname;
+  const isLoginPage = pathname === '/login';
+  const isRegisterPage = pathname === '/register';
 
   // If token is not valid, try to refresh it using refresh token
   if (!isAuth) {
@@ -45,13 +49,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // If user is not authenticated and trying to access non-login page
-  if (!isAuth && !isLoginPage) {
+  // If user is not authenticated and trying to access non-public page
+  if (!isAuth && !isLoginPage && !isRegisterPage) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If user is authenticated and trying to access login page
-  if (isAuth && isLoginPage) {
+  // If user is authenticated and trying to access login/register page
+  if (isAuth && (isLoginPage || isRegisterPage)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
