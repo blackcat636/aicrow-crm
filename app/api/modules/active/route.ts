@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 
 // Mock data for active modules - in real implementation this would come from your NestJS backend
 const ACTIVE_MODULES = [
-  // Only keep Users and Documentation modules active
   {
     key: 'users',
     name: 'Users',
@@ -17,12 +16,42 @@ const ACTIVE_MODULES = [
     }
   },
   {
+    key: 'automations',
+    name: 'Automations',
+    routes: ['/workflows'],
+    icon: 'IconSettings',
+    menu: true,
+    order: 2,
+    permissions: {
+      can_view: true,
+      can_edit: true,
+      can_delete: false
+    },
+    subItems: [
+      {
+        title: 'Workflows',
+        url: '/workflows',
+        icon: 'IconSettings'
+      },
+      {
+        title: 'Executions',
+        url: '/executions',
+        icon: 'IconListDetails'
+      },
+      {
+        title: 'Instances',
+        url: '/instances',
+        icon: 'IconListDetails'
+      }
+    ]
+  },
+  {
     key: 'documentation',
     name: 'Documentation',
     routes: ['/documentation'],
     icon: 'IconFileDescription',
     menu: true,
-    order: 2,
+    order: 3,
     permissions: {
       can_view: true,
       can_edit: false,

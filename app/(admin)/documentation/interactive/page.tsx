@@ -5,7 +5,7 @@ import { ModuleRouteGuard } from '@/components/auth/module-route-guard';
 import { useModulePermission } from '@/components/auth/module-route-guard';
 import InteractiveDocumentation from '@/components/documentation/interactive-documentation';
 
-export default function DocumentationPage() {
+export default function InteractiveDocumentationPage() {
   const { canView } = useModulePermission('documentation');
 
   if (!canView) {
@@ -26,3 +26,5 @@ export default function DocumentationPage() {
     </ModuleRouteGuard>
   );
 }
+
+

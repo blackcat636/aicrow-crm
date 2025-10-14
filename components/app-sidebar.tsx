@@ -5,6 +5,7 @@ import {
   IconFileDescription,
   IconInnerShadowTop,
   IconListDetails,
+  IconSettings,
   IconUsers,
   type Icon,
 } from "@tabler/icons-react"
@@ -28,20 +29,31 @@ const iconMap: Record<string, Icon> = {
   IconListDetails,
   IconUsers,
   IconFileDescription,
+  IconSettings,
 };
 
 // Convert module to nav item format
 const convertModuleToNavItem = (module: Module) => {
   const IconComponent = iconMap[module.icon] || IconListDetails;
   
+  const items = module.subItems?.map(subItem => ({
+      title: subItem.title,
+      url: subItem.url,
+    })) || [];
+
+  // Inject iframe variant as a submenu under Documentation
+  if (module.key === 'documentation') {
+    const hasInteractive = items.some(i => i.url === '/documentation');
+    if (!hasInteractive) {
+      items.push({ title: 'Documentation', url: '/documentation' });
+    }
+  }
+
   return {
     title: module.name,
     url: module.routes[0] || '/',
     icon: IconComponent,
-    items: module.subItems?.map(subItem => ({
-      title: subItem.title,
-      url: subItem.url,
-    })),
+    items,
   };
 };
 

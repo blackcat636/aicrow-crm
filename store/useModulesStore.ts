@@ -75,9 +75,6 @@ export const useModulesStore = create<ModuleStore>((set, get) => ({
 
     // If API failed or no modules loaded, allow access as fallback
     if (error || modules.length === 0) {
-      console.log(
-        `🔄 Fallback: Allowing access to ${moduleKey} (API error or no modules)`
-      );
       return true;
     }
 

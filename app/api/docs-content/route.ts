@@ -2,15 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedServer, refreshAccessToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
+  // Extract URL parts upfront so they're available in catch/finally
+  const { searchParams } = new URL(request.url);
+  const slug = searchParams.get('slug');
+  const language = searchParams.get('language') || 'en';
   try {
-    console.log('🌳 Tree API called');
+    if (!slug) {
+      return NextResponse.json(
+        {
+          status: 400,
+          error: 'Bad Request',
+          message: 'Document slug is required'
+        },
+        { status: 400 }
+      );
+    }
 
     // Read JWT token from request cookies (server-side)
     let token = request.cookies.get('access_token')?.value || null;
-    console.log('🔑 Token available:', !!token);
 
     if (!token) {
-      console.log('❌ No token found in cookies');
       return NextResponse.json(
         {
           status: 401,
@@ -47,76 +58,75 @@ export async function GET(request: NextRequest) {
     // Get backend API URL from environment
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
-    console.log('🌐 Backend URL:', backendUrl);
 
-    const targetUrl = `${backendUrl}/admin/docs/tree`;
-    console.log('🎯 Fetching from:', targetUrl);
-
-    // Fetch documentation tree from your backend
-    const treeResponse = await fetch(targetUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'User-Agent': request.headers.get('user-agent') || '',
-        'Content-Type': 'application/json'
+    // Fetch specific document from your backend
+    const docResponse = await fetch(
+      `${backendUrl}/admin/docs/content/${slug}?language=${language}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'User-Agent': request.headers.get('user-agent') || '',
+          'Content-Type': 'application/json'
+        }
       }
-    });
-
-    console.log(
-      '📡 Backend response status:',
-      treeResponse.status,
-      treeResponse.statusText
     );
 
-    if (treeResponse.ok) {
-      const treeData = await treeResponse.json();
+    if (docResponse.ok) {
+      const docData = await docResponse.json();
+      console.log('✅ Document retrieved successfully:', slug);
       return NextResponse.json({
         status: 200,
-        data: treeData,
-        message: 'Documentation tree retrieved successfully'
+        data: docData,
+        message: 'Document retrieved successfully'
       });
     } else {
       let errorText = '';
       try {
-        errorText = await treeResponse.text();
-        console.log('📄 Backend error response:', errorText);
+        errorText = await docResponse.text();
+        console.log('📄 Backend document error response:', errorText);
       } catch (textError) {
-        console.log('⚠️ Could not read backend error response:', textError);
+        console.log(
+          '⚠️ Could not read backend document error response:',
+          textError
+        );
         errorText = 'Could not read error response';
       }
 
-      console.log('❌ Backend request failed:', {
-        status: treeResponse.status,
-        statusText: treeResponse.statusText,
-        url: targetUrl,
+      console.log('❌ Backend document request failed:', {
+        status: docResponse.status,
+        statusText: docResponse.statusText,
+        slug: slug,
+        language: language,
         errorText:
           errorText.substring(0, 200) + (errorText.length > 200 ? '...' : '')
       });
 
       return NextResponse.json(
         {
-          status: treeResponse.status,
-          error: 'Failed to fetch documentation tree',
-          message: `${treeResponse.status} ${treeResponse.statusText}`,
+          status: docResponse.status,
+          error: 'Failed to fetch document',
+          message: `${docResponse.status} ${docResponse.statusText}`,
           details: errorText,
-          url: targetUrl
+          slug: slug,
+          language: language
         },
-        { status: treeResponse.status }
+        { status: docResponse.status }
       );
     }
   } catch (error) {
-    console.error('💥 Tree API error:', {
+    console.error('💥 Document API error:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      error
+      error: error,
+      slug: searchParams?.get('slug') || 'unknown',
+      language: searchParams?.get('language') || 'unknown'
     });
     return NextResponse.json(
       {
         status: 500,
         error: 'Internal Server Error',
         message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch documentation tree',
+          error instanceof Error ? error.message : 'Failed to fetch document',
         details: error instanceof Error ? error.stack : String(error)
       },
       { status: 500 }
