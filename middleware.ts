@@ -73,11 +73,20 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect to login if not authenticated
+  // Handle root path redirects
+  if (pathname === '/') {
+    if (!isAuthenticated) {
+      // Redirect unauthenticated users to login
+      return NextResponse.redirect(new URL('/login', request.url));
+    } else {
+      // Redirect authenticated users to users page
+      return NextResponse.redirect(new URL('/users', request.url));
+    }
+  }
+
+  // Redirect to login if not authenticated for other protected routes
   if (!isAuthenticated) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
