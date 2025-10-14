@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 export async function POST() {
   try {
     // Just return a successful response for Cloudflare RUM requests

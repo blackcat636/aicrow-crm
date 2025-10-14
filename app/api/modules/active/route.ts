@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 // Mock data for active modules - in real implementation this would come from your NestJS backend
 const ACTIVE_MODULES = [
   {

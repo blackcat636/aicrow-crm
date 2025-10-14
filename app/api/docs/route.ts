@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedServer, refreshAccessToken } from '@/lib/auth';
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   const ua = request.headers.get('user-agent') || 'unknown';
   const ip = request.headers.get('x-forwarded-for') || 'unknown';

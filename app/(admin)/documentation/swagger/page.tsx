@@ -1,5 +1,7 @@
 "use client"
 
+export const runtime = 'edge';
+
 import React from 'react';
 import { ModuleRouteGuard } from '@/components/auth/module-route-guard';
 import { useModulePermission } from '@/components/auth/module-route-guard';

@@ -1,5 +1,7 @@
 "use client"
 
+export const runtime = 'edge';
+
 import { useEffect } from 'react'
 import { useInstancesStore } from '@/store/useInstancesStore'
 import { InstancesDataTable } from '@/components/instances/instances-data-table'

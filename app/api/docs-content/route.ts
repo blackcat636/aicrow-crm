@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedServer, refreshAccessToken } from '@/lib/auth';
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   // Extract URL parts upfront so they're available in catch/finally
   const { searchParams } = new URL(request.url);
