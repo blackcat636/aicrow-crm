@@ -73,7 +73,7 @@ export function RegisterForm() {
                     deviceId: data.deviceId,
                 })
                 setUser(data.user)
-                router.push("/")
+                router.push("/users")
             } else {
                 // Fallback for old response format
                 setTokens({
@@ -82,7 +82,7 @@ export function RegisterForm() {
                     deviceId: data.deviceId,
                 })
                 setUser(data.user)
-                router.push("/")
+                router.push("/users")
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Registration error")

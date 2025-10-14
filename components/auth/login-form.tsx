@@ -42,7 +42,7 @@ export function LoginForm() {
                 deviceId: data.deviceId,
             })
             setUser(data.user)
-            router.push("/")
+            router.push("/users")
         } catch (err) {
             setError(err instanceof Error ? err.message : "Authentication error")
         } finally {
