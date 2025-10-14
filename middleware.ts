@@ -2,31 +2,96 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedServer, refreshAccessToken } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
-  // Only run middleware for API routes that need authentication
-  if (request.nextUrl.pathname.startsWith('/api/docs')) {
-    const accessToken = request.cookies.get('access_token')?.value;
+  const { pathname } = request.nextUrl;
 
-    if (accessToken) {
-      try {
-        const isValid = await isAuthenticatedServer(accessToken);
+  // Skip middleware for public routes
+  const publicRoutes = ['/login', '/register', '/api/telegram/webhook'];
+  if (publicRoutes.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
 
-        if (!isValid) {
-          const refreshResponse = await refreshAccessToken(request);
+  // Skip middleware for static files and API routes that don't need auth
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/api/docs') ||
+    pathname.includes('.')
+  ) {
+    // Handle API docs routes with authentication
+    if (pathname.startsWith('/api/docs')) {
+      const accessToken = request.cookies.get('access_token')?.value;
 
-          if (refreshResponse) {
-            return refreshResponse;
-          } else {
+      if (accessToken) {
+        try {
+          const isValid = await isAuthenticatedServer(accessToken);
+
+          if (!isValid) {
+            const refreshResponse = await refreshAccessToken(request);
+
+            if (refreshResponse) {
+              return refreshResponse;
+            }
           }
+        } catch (error) {
+          console.error('❌ Middleware: Token validation error:', error);
         }
-      } catch (error) {
-        console.error('❌ Middleware: Token validation error:', error);
       }
     }
+
+    return NextResponse.next();
+  }
+
+  // Check authentication for protected routes
+  const accessToken = request.cookies.get('access_token')?.value;
+  let isAuthenticated = false;
+
+  if (accessToken) {
+    try {
+      // Simple JWT validation without external dependencies
+      const parts = accessToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+        );
+        const now = Math.floor(Date.now() / 1000);
+
+        // Check if token has not expired
+        if (payload.exp && payload.exp > now) {
+          isAuthenticated = true;
+        }
+      }
+
+      // If token is expired, try to refresh
+      if (!isAuthenticated) {
+        const refreshResponse = await refreshAccessToken(request);
+        if (refreshResponse) {
+          return refreshResponse;
+        }
+      }
+    } catch (error) {
+      console.error('❌ Middleware: Authentication error:', error);
+    }
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/api/docs-tree', '/api/docs-content']
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)'
+  ]
 };

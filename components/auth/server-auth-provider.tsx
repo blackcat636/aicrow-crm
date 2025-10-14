@@ -72,7 +72,6 @@ export async function ServerAuthProvider({ children }: { children: React.ReactNo
         } catch (error) {
             console.error('❌ Server: Error getting user data:', error);
         }
-    } else {
     }
 
     // Always render the children, even if not authenticated

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +23,7 @@ export function LoginForm() {
     const [isLoading, setIsLoading] = useState(false)
     const [isClient, setIsClient] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
     const { setUser } = useUserStore()
 
     useEffect(() => {
@@ -42,7 +43,10 @@ export function LoginForm() {
                 deviceId: data.deviceId,
             })
             setUser(data.user)
-            router.push("/users")
+            
+            // Redirect to the original page or default to dashboard
+            const redirectTo = searchParams.get('redirect') || '/'
+            router.push(redirectTo)
         } catch (err) {
             setError(err instanceof Error ? err.message : "Authentication error")
         } finally {
