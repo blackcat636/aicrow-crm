@@ -62,7 +62,6 @@ export default function InteractiveDocumentation() {
   useEffect(() => {
     if (needsLogin && !loading) {
       const timer = setTimeout(() => {
-        console.log('🔄 Auto-redirecting to login page...');
         router.push('/login');
       }, 5000); // Redirect after 5 seconds
 
@@ -87,12 +86,10 @@ export default function InteractiveDocumentation() {
           
           try {
             responseText = await response.text();
-            console.log('📄 Raw response text:', responseText);
             
             if (responseText) {
               try {
                 errorData = JSON.parse(responseText);
-                console.log('📊 Parsed error data:', errorData);
               } catch (parseError) {
                 console.warn('⚠️ Could not parse error response as JSON:', parseError);
                 errorData = { rawText: responseText };
@@ -118,8 +115,6 @@ export default function InteractiveDocumentation() {
             const refreshSuccess = await refreshTokenClient();
             
             if (refreshSuccess) {
-              console.log('✅ Token refreshed, retrying request...');
-              // Retry the request with the new token
               const retryResponse = await fetch('/api/docs-tree', {
                 credentials: 'include'
               });
@@ -151,7 +146,6 @@ export default function InteractiveDocumentation() {
         }
         
         const result = await response.json();
-        console.log('📊 API Response:', result);
         
         const treeData = result.data || result;
         
@@ -189,9 +183,7 @@ export default function InteractiveDocumentation() {
     try {
       setDocLoading(true);
       setSelectedSlug(slug);
-      setError(null); // Clear any previous errors
-      
-      console.log('📄 Loading document:', { slug, language: currentLanguage });
+      setError(null); 
       
       // Check if we're using fallback data and if the slug exists
       if (isUsingFallback) {
@@ -206,7 +198,6 @@ export default function InteractiveDocumentation() {
         
         // Check if the requested language is available for this document
         if (!documentInfo.languages?.includes(currentLanguage)) {
-          console.log(`📄 Document "${slug}" not available in language "${currentLanguage}", showing placeholder`);
           const fallbackContent: DocumentContent = {
             metadata: {
               title: documentInfo.title,
@@ -246,8 +237,6 @@ export default function InteractiveDocumentation() {
           return;
         }
         
-        // For fallback mode, show a placeholder content instead of making API calls
-        console.log('📄 Using fallback content for document:', slug);
         const fallbackContent: DocumentContent = {
           metadata: {
             title: documentInfo.title,
@@ -294,7 +283,6 @@ export default function InteractiveDocumentation() {
         .find(doc => doc.slug === slug);
       
       if (documentInfo && !documentInfo.languages?.includes(currentLanguage)) {
-        console.log(`📄 Document "${slug}" doesn't support language "${currentLanguage}", showing placeholder`);
         const availableLanguages = documentInfo.languages?.join(', ') || 'en';
         
         // Show fallback content instead of throwing error
@@ -375,7 +363,6 @@ export default function InteractiveDocumentation() {
           const refreshSuccess = await refreshTokenClient();
           
           if (refreshSuccess) {
-            console.log('✅ Token refreshed, retrying document request...');
             // Retry the request with the new token
             const retryResponse = await fetch(`/api/docs-content?slug=${slug}&language=${currentLanguage}`, {
               credentials: 'include'
@@ -433,11 +420,9 @@ export default function InteractiveDocumentation() {
       let result;
       try {
         result = await response.json();
-        console.log('📄 Document API Response:', result);
       } catch (jsonError) {
         console.error('❌ Failed to parse JSON response:', jsonError);
         const responseText = await response.text().catch(() => 'Could not read response text');
-        console.log('📄 Raw response text:', responseText);
         throw new Error(`Invalid JSON response from API: ${responseText.substring(0, 200)}`);
       }
       
@@ -473,7 +458,6 @@ export default function InteractiveDocumentation() {
       
       // Check if it's a language-specific error and show fallback content
       if (errorMessage.includes('not available in') && errorMessage.includes('language')) {
-        console.log('📄 Language-specific error detected, showing fallback content');
         
         // Extract document info from error message
         const slugMatch = errorMessage.match(/Document "([^"]+)"/);
@@ -545,7 +529,6 @@ export default function InteractiveDocumentation() {
       
       // Check if it's an API error (empty object or invalid response)
       if (errorMessage.includes('Invalid JSON response') || errorMessage.includes('Invalid API response format') || errorMessage.includes('Invalid document data')) {
-        console.log('📄 API error detected, showing fallback content');
         
         // Find document info from fallback data
         const fallbackData = getFallbackTreeData();
@@ -605,11 +588,6 @@ export default function InteractiveDocumentation() {
       }
       
       setError(errorMessage);
-      
-      // If it's a 404 error, suggest alternative actions
-      if (errorMessage.includes('not found')) {
-        console.log('💡 Document not found, suggesting alternatives...');
-      }
     } finally {
       setDocLoading(false);
     }

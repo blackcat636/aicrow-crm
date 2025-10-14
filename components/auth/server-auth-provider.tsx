@@ -17,14 +17,11 @@ export async function ServerAuthProvider({ children }: { children: React.ReactNo
     if (accessToken) {
         try {
             isAuth = await isAuthenticatedServer(accessToken);
-        } catch (error) {
-            console.log('🔐 Server: Token validation error:', error);
+        } catch {
             isAuth = false;
         }
         
-        // If token is expired, try to refresh it
         if (!isAuth) {
-            console.log('🔄 Server: Token expired, attempting to refresh...');
             
             try {
                 // Create a mock request object for refreshAccessToken
@@ -40,23 +37,18 @@ export async function ServerAuthProvider({ children }: { children: React.ReactNo
                 const refreshResponse = await refreshAccessToken(mockRequest);
                 
                 if (refreshResponse) {
-                    console.log('✅ Server: Token refreshed successfully');
                     // Get the new token from cookies
                     const newTokenCookie = refreshResponse.cookies.get('access_token');
                     if (newTokenCookie) {
                         accessToken = newTokenCookie.value;
                         try {
                             isAuth = await isAuthenticatedServer(accessToken);
-                        } catch (error) {
-                            console.log('🔐 Server: New token validation error:', error);
+                        } catch {
                             isAuth = false;
                         }
                     }
-                } else {
-                    console.log('❌ Server: Failed to refresh token');
                 }
-            } catch (error) {
-                console.log('❌ Server: Token refresh error:', error);
+            } catch {
             }
         }
     }
@@ -76,14 +68,11 @@ export async function ServerAuthProvider({ children }: { children: React.ReactNo
 
             if (response.ok) {
                 userData = await response.json();
-            } else {
-                console.log('❌ Server: User profile request failed:', response.status, response.statusText);
             }
         } catch (error) {
             console.error('❌ Server: Error getting user data:', error);
         }
     } else {
-        console.log('🔐 Server: User not authenticated, skipping profile fetch');
     }
 
     // Always render the children, even if not authenticated

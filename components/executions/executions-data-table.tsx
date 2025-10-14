@@ -46,24 +46,8 @@ import {
   IconExternalLink
 } from "@tabler/icons-react"
 import Link from "next/link"
-import { z } from "zod"
 
-const executionsSchema = z.object({
-  id: z.number(),
-  n8nId: z.string(),
-  workflowName: z.string().nullable(),
-  mode: z.string(),
-  status: z.enum(['success', 'error', 'canceled', 'running', 'waiting']),
-  finished: z.boolean(),
-  startedAt: z.string(),
-  stoppedAt: z.string().nullable(),
-  duration: z.number(),
-  instance: z.object({
-    name: z.string(),
-  }),
-})
-
-type ExecutionsTable = z.infer<typeof executionsSchema>
+// Schema removed as it was only used for type inference
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -129,7 +113,7 @@ const formatDuration = (duration: number) => {
 interface ExecutionsDataTableProps {
   data: Execution[]
   isLoading?: boolean
-  onFiltersChange?: (filters: any) => void
+  onFiltersChange?: (filters: ColumnFiltersState) => void
 }
 
 export function ExecutionsDataTable({ 
@@ -146,13 +130,14 @@ export function ExecutionsDataTable({
     pageSize: 50,
   })
 
-  const handleFiltersChange = React.useCallback((filters: ColumnFiltersState) => {
-    setColumnFilters(filters)
+  const handleFiltersChange = React.useCallback((updaterOrValue: ColumnFiltersState | ((old: ColumnFiltersState) => ColumnFiltersState)) => {
+    const newFilters = typeof updaterOrValue === 'function' ? updaterOrValue(columnFilters) : updaterOrValue;
+    setColumnFilters(newFilters)
     if (onFiltersChange) {
-      onFiltersChange(filters)
+      onFiltersChange(newFilters)
     }
     setPagination(prev => ({ ...prev, pageIndex: 0 }))
-  }, [onFiltersChange])
+  }, [onFiltersChange, columnFilters])
 
   const columns: ColumnDef<Execution>[] = [
     {
@@ -257,8 +242,8 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => {
-        const workflowName = row.workflow?.name || row.workflowName || 'Unknown';
-        const workflowId = row.workflow?.id;
+        const workflowName = row.original.workflow?.name || row.original.workflowName || 'Unknown';
+        const workflowId = row.original.workflow?.id;
         
         if (workflowId) {
           return (
@@ -300,7 +285,7 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="text-sm">{row.instance?.name || 'Unknown'}</div>
+        <div className="text-sm">{row.original.instance?.name || 'Unknown'}</div>
       ),
     },
     {

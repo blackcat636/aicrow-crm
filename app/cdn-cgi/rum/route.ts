@@ -1,9 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    console.log('🔍 Cloudflare RUM request received (direct route)');
-
     // Just return a successful response for Cloudflare RUM requests
     // This prevents CORS errors without actually processing the data
     return new NextResponse('OK', {
@@ -24,10 +22,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log('🔍 Cloudflare RUM GET request received (direct route)');
-
     // Just return a successful response for Cloudflare RUM requests
     return new NextResponse('OK', {
       status: 200,
@@ -48,7 +44,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Handle OPTIONS requests for CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

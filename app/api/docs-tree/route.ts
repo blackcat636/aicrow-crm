@@ -3,14 +3,10 @@ import { isAuthenticatedServer, refreshAccessToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🌳 Tree API called');
-
     // Read JWT token from request cookies (server-side)
     let token = request.cookies.get('access_token')?.value || null;
-    console.log('🔑 Token available:', !!token);
 
     if (!token) {
-      console.log('❌ No token found in cookies');
       return NextResponse.json(
         {
           status: 401,
@@ -24,15 +20,12 @@ export async function GET(request: NextRequest) {
     // Check if token is valid, if not try to refresh
     const isValid = await isAuthenticatedServer(token);
     if (!isValid) {
-      console.log('🔄 Token expired, attempting to refresh...');
       const refreshResponse = await refreshAccessToken(request);
 
       if (refreshResponse) {
-        console.log('✅ Token refreshed successfully');
         // Get the new token from the refreshed response
         token = refreshResponse.cookies.get('access_token')?.value || token;
       } else {
-        console.log('❌ Failed to refresh token');
         return NextResponse.json(
           {
             status: 401,
@@ -47,10 +40,8 @@ export async function GET(request: NextRequest) {
     // Get backend API URL from environment
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
-    console.log('🌐 Backend URL:', backendUrl);
 
     const targetUrl = `${backendUrl}/admin/docs/tree`;
-    console.log('🎯 Fetching from:', targetUrl);
 
     // Fetch documentation tree from your backend
     const treeResponse = await fetch(targetUrl, {
@@ -60,12 +51,6 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json'
       }
     });
-
-    console.log(
-      '📡 Backend response status:',
-      treeResponse.status,
-      treeResponse.statusText
-    );
 
     if (treeResponse.ok) {
       const treeData = await treeResponse.json();
@@ -78,19 +63,9 @@ export async function GET(request: NextRequest) {
       let errorText = '';
       try {
         errorText = await treeResponse.text();
-        console.log('📄 Backend error response:', errorText);
-      } catch (textError) {
-        console.log('⚠️ Could not read backend error response:', textError);
+      } catch {
         errorText = 'Could not read error response';
       }
-
-      console.log('❌ Backend request failed:', {
-        status: treeResponse.status,
-        statusText: treeResponse.statusText,
-        url: targetUrl,
-        errorText:
-          errorText.substring(0, 200) + (errorText.length > 200 ? '...' : '')
-      });
 
       return NextResponse.json(
         {

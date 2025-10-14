@@ -1,7 +1,5 @@
 import {
   Instance,
-  InstancesResponse,
-  InstanceResponse,
   CreateInstanceRequest,
   UpdateInstanceRequest
 } from '@/interface/Instance';

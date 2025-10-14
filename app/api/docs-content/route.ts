@@ -35,15 +35,12 @@ export async function GET(request: NextRequest) {
     // Check if token is valid, if not try to refresh
     const isValid = await isAuthenticatedServer(token);
     if (!isValid) {
-      console.log('🔄 Token expired, attempting to refresh...');
       const refreshResponse = await refreshAccessToken(request);
 
       if (refreshResponse) {
-        console.log('✅ Token refreshed successfully');
         // Get the new token from the refreshed response
         token = refreshResponse.cookies.get('access_token')?.value || token;
       } else {
-        console.log('❌ Failed to refresh token');
         return NextResponse.json(
           {
             status: 401,
@@ -73,7 +70,6 @@ export async function GET(request: NextRequest) {
 
     if (docResponse.ok) {
       const docData = await docResponse.json();
-      console.log('✅ Document retrieved successfully:', slug);
       return NextResponse.json({
         status: 200,
         data: docData,
@@ -83,23 +79,9 @@ export async function GET(request: NextRequest) {
       let errorText = '';
       try {
         errorText = await docResponse.text();
-        console.log('📄 Backend document error response:', errorText);
-      } catch (textError) {
-        console.log(
-          '⚠️ Could not read backend document error response:',
-          textError
-        );
+      } catch {
         errorText = 'Could not read error response';
       }
-
-      console.log('❌ Backend document request failed:', {
-        status: docResponse.status,
-        statusText: docResponse.statusText,
-        slug: slug,
-        language: language,
-        errorText:
-          errorText.substring(0, 200) + (errorText.length > 200 ? '...' : '')
-      });
 
       return NextResponse.json(
         {

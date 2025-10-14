@@ -124,7 +124,6 @@ export async function isAuthenticatedServer(
   accessToken: string | undefined
 ): Promise<boolean> {
   if (!accessToken) {
-    console.log('🔐 No access token provided');
     return false;
   }
 
@@ -135,15 +134,9 @@ export async function isAuthenticatedServer(
     // Check if token has not expired
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) {
-      console.log('🔐 Token expired:', {
-        exp: payload.exp,
-        now: now,
-        expiredAt: new Date(payload.exp * 1000).toISOString()
-      });
       return false;
     }
 
-    console.log('✅ Token is valid');
     return true;
   } catch (error) {
     console.error('🔐 Token validation error:', {
@@ -160,13 +153,10 @@ export async function refreshAccessToken(
   const { refreshToken, deviceId } = getTokens(request);
 
   if (!refreshToken || !deviceId) {
-    console.log('🔄 Refresh failed: Missing refresh token or device ID');
     return null;
   }
 
   try {
-    console.log('🔄 Attempting to refresh token...');
-
     const response = await globalThis.fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
@@ -176,17 +166,10 @@ export async function refreshAccessToken(
       body: JSON.stringify({ refreshToken, deviceId })
     });
 
-    console.log('🔄 Refresh response status:', response.status);
-
     const data = await response.json();
-    console.log('🔄 Refresh response data:', {
-      status: data.status,
-      hasData: !!data.data
-    });
 
     // Check only status in data, since server returns 201
     if (data.status === 200 && data.data) {
-      console.log('✅ Token refresh successful');
       const newResponse = NextResponse.next();
 
       // Set new tokens in cookies
@@ -216,10 +199,8 @@ export async function refreshAccessToken(
       return newResponse;
     }
 
-    console.log('❌ Token refresh failed:', data);
     return null;
-  } catch (error) {
-    console.error('❌ Token refresh error:', error);
+  } catch {
     return null;
   }
 }
@@ -259,13 +240,10 @@ export const refreshTokenClient = async (): Promise<boolean> => {
   const deviceId = getDeviceId();
 
   if (!refreshToken || !deviceId) {
-    console.log('❌ No refresh token or device ID available');
     return false;
   }
 
   try {
-    console.log('🔄 Client: Attempting to refresh token...');
-
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
@@ -278,8 +256,6 @@ export const refreshTokenClient = async (): Promise<boolean> => {
     const data = await response.json();
 
     if (data.status === 200 && data.data) {
-      console.log('✅ Client: Token refreshed successfully');
-
       // Update cookies with new tokens
       setTokens({
         accessToken: data.data.accessToken,
@@ -289,11 +265,8 @@ export const refreshTokenClient = async (): Promise<boolean> => {
 
       return true;
     } else {
-      console.log('❌ Client: Token refresh failed:', data);
-
       // If refresh token is also invalid, clear all tokens
       if (data.status === 401) {
-        console.log('🧹 Clearing invalid tokens...');
         removeTokens();
       }
 

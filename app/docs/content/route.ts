@@ -3,8 +3,6 @@ import { getTokens, isAuthenticatedServer } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Docs content request received (direct route)');
-
     // Get JWT token from cookies
     const { accessToken } = getTokens(request);
 
@@ -38,14 +36,11 @@ export async function GET(request: NextRequest) {
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
 
-    console.log('📡 Fetching docs content from backend...');
-
     // Proxy request to backend docs content
     const contentUrl = `${backendUrl.replace(
       /\/$/,
       ''
     )}/admin/docs/content/${slug}?language=${language}`;
-    console.log('Content URL:', contentUrl);
 
     const response = await fetch(contentUrl, {
       headers: {
@@ -54,8 +49,6 @@ export async function GET(request: NextRequest) {
         Accept: 'application/json'
       }
     });
-
-    console.log('✅ Backend content response:', response.status);
 
     if (!response.ok) {
       console.error(
@@ -89,7 +82,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Handle OPTIONS requests for CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

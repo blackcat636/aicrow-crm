@@ -43,15 +43,13 @@ export default function ExecutionsPage() {
     fetchExecutions(1, 50, currentFilters)
   }, [fetchExecutions, currentFilters])
 
-  const handleFiltersChange = (newFilters: any) => {
-    // Here you would implement server-side filtering logic
-    console.log('Filters changed:', newFilters)
-  }
-
   const successCount = executions.filter(e => e.status === 'success').length
   const errorCount = executions.filter(e => e.status === 'error').length
   const runningCount = executions.filter(e => e.status === 'running').length
-  const canceledCount = executions.filter(e => e.status === 'canceled').length
+
+  const handleFiltersChange = () => {
+    // Intentionally left blank: parent handles fetching via effects and store
+  }
 
   return (
     <div className="flex flex-1 flex-col">

@@ -3,8 +3,6 @@ import { getTokens, isAuthenticatedServer } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Docs tree request received (direct route)');
-
     // Get JWT token from cookies
     const { accessToken } = getTokens(request);
 
@@ -24,11 +22,8 @@ export async function GET(request: NextRequest) {
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
 
-    console.log('📡 Fetching docs tree from backend...');
-
     // Proxy request to backend docs tree
     const treeUrl = `${backendUrl.replace(/\/$/, '')}/admin/docs/tree`;
-    console.log('Tree URL:', treeUrl);
 
     const response = await fetch(treeUrl, {
       headers: {
@@ -37,8 +32,6 @@ export async function GET(request: NextRequest) {
         Accept: 'application/json'
       }
     });
-
-    console.log('✅ Backend tree response:', response.status);
 
     if (!response.ok) {
       console.error(
@@ -72,7 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Handle OPTIONS requests for CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

@@ -47,7 +47,6 @@ export async function getAllExecutions(
       data: data.data
     };
   } catch (error) {
-    console.error('Error fetching executions:', error);
     return {
       status: 500,
       message:
@@ -83,7 +82,6 @@ export async function getExecutionById(
       data: data.data
     };
   } catch (error) {
-    console.error('Error fetching execution:', error);
     return {
       status: 500,
       message:

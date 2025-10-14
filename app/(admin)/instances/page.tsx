@@ -5,6 +5,7 @@ import { useInstancesStore } from '@/store/useInstancesStore'
 import { InstancesDataTable } from '@/components/instances/instances-data-table'
 import { CreateInstanceDialog } from '@/components/instances/create-instance-dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { IconServer, IconCircleCheckFilled, IconCircleXFilled } from '@tabler/icons-react'
 
 export default function InstancesPage() {
@@ -20,7 +21,6 @@ export default function InstancesPage() {
   }, [fetchInstances])
 
   const activeCount = instances.filter(i => i.isActive).length
-  const inactiveCount = instances.filter(i => !i.isActive).length
   const totalWorkflows = instances.reduce((sum, i) => sum + i.totalWorkflows, 0)
   const totalExecutions = instances.reduce((sum, i) => sum + i.totalExecutions, 0)
 

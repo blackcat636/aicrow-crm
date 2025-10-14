@@ -3,8 +3,6 @@ import { getTokens, isAuthenticatedServer } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Docs token generation request received (direct route)');
-
     // Get JWT token from cookies
     const { accessToken } = getTokens(request);
 
@@ -28,14 +26,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const expiresInMinutes = searchParams.get('expiresInMinutes') || '60';
 
-    console.log('📡 Generating temporary token from backend...');
-
     // Request temporary token from backend
     const tokenUrl = `${backendUrl.replace(
       /\/$/,
       ''
     )}/admin/docs/token/generate?expiresInMinutes=${expiresInMinutes}`;
-    console.log('Token URL:', tokenUrl);
 
     const response = await fetch(tokenUrl, {
       headers: {
@@ -43,8 +38,6 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json'
       }
     });
-
-    console.log('✅ Backend token response:', response.status);
 
     if (!response.ok) {
       console.error(
@@ -78,7 +71,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Handle OPTIONS requests for CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

@@ -19,9 +19,8 @@ export default function Page() {
     fetchWorkflows(1, newPageSize); // Return to first page when changing size
   };
 
-  const handleFiltersChange = (filters: any[]) => {
-    // TODO: Implement server-side filtering
-    console.log('Filters changed:', filters);
+  const handleFiltersChange = () => {
+    // Intentionally left blank: parent handles fetching via effects and store
   };
 
   if (isLoading && workflows.length === 0) return <div>Loading...</div>;

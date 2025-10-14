@@ -41,11 +41,15 @@ const convertModuleToNavItem = (module: Module) => {
       url: subItem.url,
     })) || [];
 
-  // Inject iframe variant as a submenu under Documentation
+  // Inject additional sub-items under Documentation
   if (module.key === 'documentation') {
     const hasInteractive = items.some(i => i.url === '/documentation');
     if (!hasInteractive) {
       items.push({ title: 'Documentation', url: '/documentation' });
+    }
+    const hasSwagger = items.some(i => i.url === '/documentation/swagger');
+    if (!hasSwagger) {
+      items.push({ title: 'Swagger', url: '/documentation/swagger' });
     }
   }
 
