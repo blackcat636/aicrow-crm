@@ -37,7 +37,6 @@ export const useUsersStore = create<UsersStore>((set) => ({
         set({ error: response.message || 'Error loading users' });
       }
     } catch (error) {
-      console.error('❌ Store: Error in fetchUsers:', error);
       set({ error: 'Error loading users' });
     } finally {
       set({ isLoading: false });

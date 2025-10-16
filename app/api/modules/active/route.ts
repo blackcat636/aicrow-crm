@@ -36,6 +36,11 @@ const ACTIVE_MODULES = [
         icon: 'IconSettings'
       },
       {
+        title: 'User Workflows',
+        url: '/user-workflows',
+        icon: 'IconUsers'
+      },
+      {
         title: 'Executions',
         url: '/executions',
         icon: 'IconListDetails'

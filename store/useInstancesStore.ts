@@ -24,7 +24,7 @@ interface InstancesStore {
   clearError: () => void;
 }
 
-export const useInstancesStore = create<InstancesStore>((set, get) => ({
+export const useInstancesStore = create<InstancesStore>((set) => ({
   instances: [],
   isLoading: false,
   error: null,

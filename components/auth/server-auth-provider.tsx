@@ -67,7 +67,10 @@ export async function ServerAuthProvider({ children }: { children: React.ReactNo
             });
 
             if (response.ok) {
-                userData = await response.json();
+                const result = await response.json();
+                console.log('🔍 [ServerAuth] Profile response:', result);
+                // Extract user data from response
+                userData = result.data || result;
             }
         } catch (error) {
             console.error('❌ Server: Error getting user data:', error);

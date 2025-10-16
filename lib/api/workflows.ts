@@ -4,7 +4,10 @@ import {
   WorkflowApiResponse
 } from '@/interface/Workflow';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
+// Remove trailing slash from API_URL to avoid double slashes
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
+).replace(/\/+$/, '');
 
 export async function getAllWorkflows(
   page: number = 1,

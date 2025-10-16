@@ -5,7 +5,10 @@ import {
 } from '@/interface/Instance';
 import { fetchWithAuth } from '../api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Remove trailing slash from API_URL to avoid double slashes
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+).replace(/\/+$/, '');
 
 export interface ApiResponse<T> {
   status: number;

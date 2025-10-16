@@ -1,20 +1,44 @@
 import { fetchWithAuth } from '../api';
 import { UsersApiResponse, UserApiResponse } from '@/interface/User';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
+// Remove trailing slash from API_URL to avoid double slashes
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
+).replace(/\/+$/, '');
 
 export async function getAllUsers(
   page: number = 1,
   limit: number = 10
 ): Promise<UsersApiResponse> {
+  const url = `${API_URL}/admin/users?page=${page}&limit=${limit}`;
+
   try {
-    const response = await fetchWithAuth(
-      `${API_URL}/admin/users?page=${page}&limit=${limit}`
-    );
+    const response = await fetchWithAuth(url);
+
     if (!response.ok) {
       throw new Error('Failed to fetch users');
     }
-    const data = (await response.json()) as UsersApiResponse;
+    const rawData = await response.json();
+
+    // Handle both response formats:
+    // Format 1: { status: 200, data: [...], total, page, limit }
+    // Format 2: { status: 200, data: { items: [...], total, page, limit } }
+    let data: UsersApiResponse;
+
+    if (rawData.data && Array.isArray(rawData.data.items)) {
+      // Format 2: nested structure
+      data = {
+        status: rawData.status,
+        message: rawData.message,
+        data: rawData.data.items,
+        total: rawData.data.total,
+        page: rawData.data.page,
+        limit: rawData.data.limit
+      };
+    } else {
+      // Format 1: flat structure
+      data = rawData as UsersApiResponse;
+    }
 
     // Check if successful status (200 or 0)
     if (data.status === 200 || data.status === 0) {
@@ -23,7 +47,7 @@ export async function getAllUsers(
       throw new Error(data.message || 'Failed to fetch users');
     }
   } catch (error) {
-    console.error('❌ API: Error in getAllUsers:', error);
+    console.error('Error fetching users:', error);
     return {
       status: 0,
       message: 'Network error',
@@ -50,7 +74,7 @@ export async function getUserById(id: number): Promise<UserApiResponse> {
       throw new Error(data.message || `Failed to fetch user with id ${id}`);
     }
   } catch (error) {
-    console.error('❌ API: Error in getUserById:', error);
+    console.error('Error fetching user by id:', error);
     return {
       status: 0,
       message: 'Network error',
