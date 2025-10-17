@@ -13,11 +13,7 @@ export function RegisterForm() {
     const [formData, setFormData] = useState({
         email: "",
         password: "",
-        confirmPassword: "",
-        firstName: "",
-        lastName: "",
-        username: "",
-        referredByCode: ""
+        confirmPassword: ""
     })
     const [error, setError] = useState("")
     const [isLoading, setIsLoading] = useState(false)
@@ -58,12 +54,7 @@ export function RegisterForm() {
         try {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { confirmPassword, ...userData } = formData
-            // Only include referredByCode if it's not empty
-            const registrationData = {
-                ...userData,
-                referredByCode: userData.referredByCode || undefined
-            }
-            const data = await register(registrationData)
+            const data = await register(userData)
             
             // Handle the new API response structure
             if (data.user) {
@@ -111,46 +102,6 @@ export function RegisterForm() {
             </div>
             <form className="mt-8 space-y-6 transition-all duration-300" onSubmit={handleSubmit}>
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="firstName">First Name</Label>
-                            <Input
-                                id="firstName"
-                                name="firstName"
-                                type="text"
-                                required
-                                value={formData.firstName}
-                                onChange={handleInputChange}
-                                className="mt-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                            />
-                        </div>
-                        <div>
-                            <Label htmlFor="lastName">Last Name</Label>
-                            <Input
-                                id="lastName"
-                                name="lastName"
-                                type="text"
-                                required
-                                value={formData.lastName}
-                                onChange={handleInputChange}
-                                className="mt-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                            />
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <Label htmlFor="username">Username</Label>
-                        <Input
-                            id="username"
-                            name="username"
-                            type="text"
-                            required
-                            value={formData.username}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                        />
-                    </div>
-
                     <div>
                         <Label htmlFor="email">Email Address</Label>
                         <Input
@@ -161,20 +112,7 @@ export function RegisterForm() {
                             required
                             value={formData.email}
                             onChange={handleInputChange}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <Label htmlFor="referredByCode">Referral Code (Optional)</Label>
-                        <Input
-                            id="referredByCode"
-                            name="referredByCode"
-                            type="text"
-                            value={formData.referredByCode}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                            placeholder="Enter referral code if you have one"
+                            className="mt-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         />
                     </div>
 
@@ -188,7 +126,7 @@ export function RegisterForm() {
                             required
                             value={formData.password}
                             onChange={handleInputChange}
-                            className="mt-1"
+                            className="mt-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         />
                     </div>
 
@@ -202,7 +140,7 @@ export function RegisterForm() {
                             required
                             value={formData.confirmPassword}
                             onChange={handleInputChange}
-                            className="mt-1"
+                            className="mt-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         />
                     </div>
                 </div>

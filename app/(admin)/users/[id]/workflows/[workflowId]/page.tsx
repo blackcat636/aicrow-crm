@@ -36,8 +36,6 @@ import {
   IconClock, 
   IconCircleCheckFilled, 
   IconCircleX,
-  IconPlayerPlay,
-  IconPlayerPause,
   IconEdit,
   IconDeviceFloppy
 } from "@tabler/icons-react"
@@ -53,7 +51,7 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
   const workflowId = parseInt(resolvedParams.workflowId);
   const router = useRouter();
   
-  const { userWorkflows, deleteWorkflow, fetchUserWorkflows, toggleWorkflow, updateWorkflow } = useUserWorkflowsStore()
+  const { userWorkflows, deleteWorkflow, fetchUserWorkflows, updateWorkflow } = useUserWorkflowsStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -128,24 +126,6 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
     }
   }
 
-  const handleToggle = async () => {
-    if (!workflow) return
-    
-    setIsSubmitting(true)
-    try {
-      const success = await toggleWorkflow(workflowId)
-      if (success) {
-        toast.success(`Workflow ${workflow.isActive ? 'deactivated' : 'activated'} successfully`)
-        await fetchUserWorkflows(userId)
-      } else {
-        toast.error('Failed to toggle workflow')
-      }
-    } catch {
-      toast.error('Error toggling workflow')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -228,18 +208,6 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
             >
               <IconEdit className="mr-2 h-4 w-4" />
               Edit
-            </Button>
-            <Button
-              variant={workflow?.isActive ? "outline" : "default"}
-              onClick={handleToggle}
-              disabled={isSubmitting}
-            >
-              {workflow?.isActive ? (
-                <IconPlayerPause className="mr-2 h-4 w-4" />
-              ) : (
-                <IconPlayerPlay className="mr-2 h-4 w-4" />
-              )}
-              {workflow?.isActive ? 'Deactivate' : 'Activate'}
             </Button>
             <Button
               variant="destructive"
