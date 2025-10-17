@@ -204,6 +204,7 @@ export const fetchApi = async <T>(
 export const register = async (userData: {
   email: string;
   password: string;
+  confirmPassword: string;
 }) => {
   const deviceId = getDeviceId();
   const headers: HeadersInit = {

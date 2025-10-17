@@ -52,9 +52,7 @@ export function RegisterForm() {
         }
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { confirmPassword, ...userData } = formData
-            const data = await register(userData)
+            const data = await register(formData)
             
             // Handle the new API response structure
             if (data.user) {
