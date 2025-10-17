@@ -212,14 +212,11 @@ export const register = async (userData: {
     ...(deviceId ? { 'x-device-id': deviceId } : {})
   };
 
-  const response = await globalThis.fetch(
-    `${API_URL}/auth/register-with-referral`,
-    {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(userData)
-    }
-  );
+  const response = await globalThis.fetch(`${API_URL}/auth/register`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(userData)
+  });
 
   const data = await response.json();
 
