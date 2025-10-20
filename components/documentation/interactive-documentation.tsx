@@ -639,7 +639,7 @@ export default function InteractiveDocumentation() {
           languages: ["en"]
         },
         {
-          title: "AICROW CRM Project Architecture Analysis",
+          title: "AiPills CRM Project Architecture Analysis",
           type: "document",
           slug: "general_project_architecture_analysis",
           order: 999,

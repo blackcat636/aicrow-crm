@@ -1,4 +1,6 @@
-import { removeTokens, setTokens } from './auth';
+import { removeTokens, setTokens, getCookieValue } from './auth';
+import { ensureValidToken } from './auth-utils';
+import { login as authLogin, logout as authLogout } from './apiAuth';
 import { useUserStore } from '@/store/useUserStore';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
@@ -54,38 +56,6 @@ export const refreshAccessToken = async (): Promise<boolean> => {
   }
 };
 
-// Function to read cookies
-export const getCookieValue = (name: string): string | null => {
-  if (typeof window === 'undefined') return null;
-
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    return parts.pop()?.split(';').shift() || null;
-  }
-  return null;
-};
-
-// Function to decode JWT token
-export const decodeJWT = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        })
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (error) {
-    console.error('Error decoding JWT:', error);
-    return null;
-  }
-};
-
 export const getAccessToken = () => {
   if (typeof window !== 'undefined') {
     const token = getCookieValue('access_token');
@@ -118,22 +88,23 @@ export async function fetchWithAuth(
   const headers = new Headers(options.headers);
 
   if (!isServer) {
-    const token = getCookieValue('access_token'); // Read from cookies
+    // 🎯 Проактивно перевіряємо токен за 5 хвилин до закінчення
+    const tokenValid = await ensureValidToken();
 
+    if (!tokenValid) {
+      removeTokens();
+      window.location.href = '/login';
+      throw new Error('Token validation failed');
+    }
+
+    // Отримуємо актуальний токен після можливого оновлення
+    const token = getCookieValue('access_token');
     if (token) {
-      // Check if not expired
-      const decoded = decodeJWT(token);
-      if (decoded) {
-        const now = Math.floor(Date.now() / 1000);
-        const timeLeft = decoded.exp - now;
-
-        if (timeLeft <= 0) {
-        } else {
-        }
-      }
-
       headers.set('Authorization', `Bearer ${token}`);
     } else {
+      removeTokens();
+      window.location.href = '/login';
+      throw new Error('No access token available');
     }
   }
 
@@ -202,50 +173,18 @@ export const fetchApi = async <T>(
 };
 
 export const login = async (email: string, password: string) => {
-  const deviceId = getDeviceId();
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(deviceId ? { 'x-device-id': deviceId } : {})
-  };
-
-  const response = await globalThis.fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ email, password })
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Authentication error');
+  try {
+    const result = await authLogin(email, password);
+    return result;
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    throw error;
   }
-
-  if (data.status === 200 && data.data) {
-    return data.data;
-  }
-
-  throw new Error('Unknown error');
 };
 
 export const logout = async () => {
-  const deviceId = getDeviceId();
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(deviceId ? { 'x-device-id': deviceId } : {})
-  };
-
   try {
-    const response = await globalThis.fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      headers
-    });
-
-    if (!response.ok) {
-      throw new Error('Logout error');
-    }
-
-    // Remove tokens on client
-    removeTokens();
+    const result = await authLogout();
 
     // Clear user data from store
     const { logout } = useUserStore.getState();
@@ -253,12 +192,15 @@ export const logout = async () => {
 
     // Redirect to login page
     window.location.href = '/login';
+
+    return result;
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('❌ Logout error:', error);
     // Even if error, still remove tokens and user data
     removeTokens();
     const { logout } = useUserStore.getState();
     logout();
     window.location.href = '/login';
+    throw error;
   }
 };

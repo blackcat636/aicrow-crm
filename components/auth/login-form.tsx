@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { setTokens } from "@/lib/auth"
 import { useUserStore } from "@/store/useUserStore"
 import { login } from "@/lib/api"
 
@@ -35,16 +34,16 @@ export function LoginForm() {
         setIsLoading(true)
 
         try {
-            const data = await login(email, password)
-            setTokens({
-                accessToken: data.accessToken,
-                refreshToken: data.refreshToken,
-                deviceId: data.deviceId,
-            })
-            setUser(data.user)
+            const result = await login(email, password)
             
-            // Redirect to users page after login
-            router.push('/users')
+            if (result.success && result.user) {
+                setUser(result.user)
+                
+                // Redirect to users page after login
+                router.push('/users')
+            } else {
+                setError(result.message || "Authentication error")
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Authentication error")
         } finally {

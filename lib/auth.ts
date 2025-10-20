@@ -25,28 +25,28 @@ export function setTokens(tokens: AuthTokens, response?: NextResponse) {
       maxAge: 3600,
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: 'strict' // Захист від CSRF атак
     });
     response.cookies.set('refresh_token', tokens.refreshToken, {
       path: '/',
-      maxAge: 86400,
+      maxAge: 31536000, // 1 рік (365 днів * 24 години * 60 хвилин * 60 секунд)
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: 'strict' // Захист від CSRF атак
     });
     response.cookies.set('device_id', tokens.deviceId, {
       path: '/',
-      maxAge: 86400,
+      maxAge: 31536000, // 1 рік - device_id не змінюється
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: 'strict' // Захист від CSRF атак
     });
   }
 
   if (typeof window !== 'undefined') {
     document.cookie = `access_token=${tokens.accessToken}; path=/; max-age=3600`;
-    document.cookie = `refresh_token=${tokens.refreshToken}; path=/; max-age=86400`;
-    document.cookie = `device_id=${tokens.deviceId}; path=/; max-age=86400`;
+    document.cookie = `refresh_token=${tokens.refreshToken}; path=/; max-age=31536000`;
+    document.cookie = `device_id=${tokens.deviceId}; path=/; max-age=31536000`;
   }
 }
 
@@ -178,22 +178,22 @@ export async function refreshAccessToken(
         maxAge: 3600,
         httpOnly: false, // Change to false for client access
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        sameSite: 'strict' // Захист від CSRF атак
       });
       newResponse.cookies.set('refresh_token', data.data.refreshToken, {
         path: '/',
-        maxAge: 86400,
+        maxAge: 31536000, // 1 рік
         httpOnly: false, // Change to false for client access
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        sameSite: 'strict' // Захист від CSRF атак
       });
       // Keep old deviceId, since it does not change
       newResponse.cookies.set('device_id', deviceId, {
         path: '/',
-        maxAge: 86400,
+        maxAge: 31536000, // 1 рік - device_id не змінюється
         httpOnly: false, // Change to false for client access
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        sameSite: 'strict' // Захист від CSRF атак
       });
 
       return newResponse;
