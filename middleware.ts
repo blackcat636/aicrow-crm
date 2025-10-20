@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for public routes
-  const publicRoutes = ['/login', '/register', '/api/telegram/webhook'];
+  const publicRoutes = ['/login', '/api/telegram/webhook'];
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
