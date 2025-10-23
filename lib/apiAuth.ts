@@ -24,7 +24,6 @@ export const generateDeviceId = (): string => {
     deviceId = uuidv4();
     // Зберігаємо Device ID на 1 рік
     cookieUtils.setCookieValue('device_id', deviceId, 31536000);
-    console.log('🆔 Generated new Device ID:', deviceId);
   }
 
   return deviceId;
@@ -62,7 +61,6 @@ export const login = async (email: string, password: string) => {
         deviceId: deviceId
       });
 
-      console.log('✅ Login successful');
       return {
         success: true,
         user: data.data.user,
@@ -114,7 +112,6 @@ export const refreshToken = async () => {
         deviceId: deviceId
       });
 
-      console.log('✅ Token refreshed successfully');
       return {
         success: true,
         accessToken: data.data.accessToken,
@@ -161,13 +158,11 @@ export const logout = async () => {
     removeTokens();
 
     if (response.ok && data.status === 200) {
-      console.log('✅ Logout successful');
       return {
         success: true,
         message: data.message || 'Logged out successfully'
       };
     } else {
-      console.log('⚠️ Server logout failed, but cleared local tokens');
       return {
         success: true,
         message: 'Logged out locally (server error)'
@@ -271,7 +266,6 @@ export const apiUtils = {
     const validation = await validateTokens();
 
     if (!validation.valid) {
-      console.log('🔄 Token invalid, attempting refresh...');
       try {
         await refreshToken();
         return true;
@@ -311,7 +305,6 @@ export const authStats = {
    * Логує детальну інформацію про аутентифікацію
    */
   logAuthInfo: () => {
-    const stats = authStats.getTokenStats();
-    console.log('🔍 Auth Stats:', stats);
+    authStats.getTokenStats();
   }
 };

@@ -53,12 +53,32 @@ const ACTIVE_MODULES = [
     ]
   },
   {
+    key: 'balance',
+    name: 'Balance Management',
+    routes: ['/balance'],
+    icon: 'IconCoins',
+    menu: true,
+    order: 3,
+    permissions: {
+      can_view: true,
+      can_edit: true,
+      can_delete: false
+    },
+    subItems: [
+      {
+        title: 'Admin Deposit',
+        url: '/balance/admin-deposit',
+        icon: 'IconCoins'
+      }
+    ]
+  },
+  {
     key: 'documentation',
     name: 'Documentation',
     routes: ['/documentation'],
     icon: 'IconFileDescription',
     menu: true,
-    order: 3,
+    order: 4,
     permissions: {
       can_view: true,
       can_edit: false,

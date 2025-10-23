@@ -7,6 +7,8 @@ import {
   IconListDetails,
   IconSettings,
   IconUsers,
+  IconCoins,
+  IconHistory,
   type Icon,
 } from "@tabler/icons-react"
 
@@ -30,6 +32,8 @@ const iconMap: Record<string, Icon> = {
   IconUsers,
   IconFileDescription,
   IconSettings,
+  IconCoins,
+  IconHistory,
 };
 
 // Convert module to nav item format

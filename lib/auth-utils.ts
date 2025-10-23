@@ -48,7 +48,6 @@ export const refreshAccessToken = async (): Promise<boolean> => {
   const deviceId = getCookieValue('device_id');
 
   if (!refreshToken || !deviceId) {
-    console.log('❌ No refresh token or device ID available');
     return false;
   }
 
@@ -71,11 +70,8 @@ export const refreshAccessToken = async (): Promise<boolean> => {
         refreshToken: data.data.refreshToken,
         deviceId: deviceId
       });
-
-      console.log('✅ Token refreshed successfully');
       return true;
     } else {
-      console.log('❌ Token refresh failed:', data.message);
       return false;
     }
   } catch (error) {
@@ -91,13 +87,11 @@ export const ensureValidToken = async (): Promise<boolean> => {
   const token = getCookieValue('access_token');
 
   if (!token) {
-    console.log('❌ No access token found');
     return false;
   }
 
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) {
-    console.log('❌ Invalid token format');
     return false;
   }
 
@@ -106,11 +100,9 @@ export const ensureValidToken = async (): Promise<boolean> => {
 
   // Якщо залишилось менше 5 хвилин (300 секунд) - оновлюємо токен
   if (timeLeft <= 300) {
-    console.log(`🔄 Token expires in ${timeLeft}s, refreshing proactively`);
     return await refreshAccessToken();
   }
 
-  console.log(`✅ Token valid for ${timeLeft}s`);
   return true;
 };
 
@@ -136,10 +128,6 @@ export const retryRequest = async <T>(
 
       // Exponential backoff: 1s, 2s, 4s, 8s...
       const delay = baseDelay * Math.pow(2, attempt);
-      console.log(
-        `🔄 Retry attempt ${attempt + 1}/${maxRetries + 1} after ${delay}ms`
-      );
-
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
@@ -244,40 +232,11 @@ export const monitoringUtils = {
   logTokenInfo: (token: string) => {
     const decoded = decodeToken(token);
     if (!decoded) {
-      console.log('❌ Invalid token');
       return;
     }
-
-    const timeLeft = securityUtils.getTokenTimeLeft(token);
-    const expiresAt = new Date(decoded.exp * 1000).toLocaleString();
-
-    console.log('🔍 Token Info:', {
-      userId: decoded.sub || 'unknown',
-      issuedAt: new Date(decoded.iat * 1000).toLocaleString(),
-      expiresAt: expiresAt,
-      timeLeft: `${Math.floor(timeLeft / 60)}m ${timeLeft % 60}s`,
-      needsRefresh: securityUtils.shouldRefreshToken(token)
-    });
-  },
+  }
 
   /**
    * Перевіряє стан всіх токенів
    */
-  checkAllTokens: () => {
-    const accessToken = getCookieValue('access_token');
-    const refreshToken = getCookieValue('refresh_token');
-    const deviceId = getCookieValue('device_id');
-
-    console.log('🔍 Token Status:', {
-      accessToken: accessToken ? '✅ Present' : '❌ Missing',
-      refreshToken: refreshToken ? '✅ Present' : '❌ Missing',
-      deviceId: deviceId ? '✅ Present' : '❌ Missing',
-      accessTokenValid: accessToken
-        ? !securityUtils.isTokenExpired(accessToken)
-        : false,
-      accessTokenTimeLeft: accessToken
-        ? securityUtils.getTokenTimeLeft(accessToken)
-        : 0
-    });
-  }
 };
