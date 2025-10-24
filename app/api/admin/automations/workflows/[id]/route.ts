@@ -6,10 +6,10 @@ export const runtime = 'edge';
 // PUT /admin/automations/workflows/[id] - Update workflow
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
 
     if (!workflowId || isNaN(Number(workflowId))) {
       return NextResponse.json(
@@ -43,7 +43,12 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: any = {};
+    const updateData: {
+      displayName?: string;
+      displayDescription?: string;
+      availableToUsers?: boolean;
+      priceUsd?: number;
+    } = {};
     if (displayName !== undefined) updateData.displayName = displayName;
     if (displayDescription !== undefined)
       updateData.displayDescription = displayDescription;
@@ -149,10 +154,10 @@ export async function PUT(
 // GET /admin/automations/workflows/[id] - Get workflow by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
 
     if (!workflowId || isNaN(Number(workflowId))) {
       return NextResponse.json(

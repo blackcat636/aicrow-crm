@@ -80,7 +80,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
         <DialogHeader>
           <DialogTitle>Edit Workflow</DialogTitle>
           <DialogDescription>
-            Update information for workflow "{workflow.name}"
+            Update information for workflow &quot;{workflow.name}&quot;
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

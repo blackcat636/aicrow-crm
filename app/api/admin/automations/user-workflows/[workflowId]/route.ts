@@ -6,10 +6,10 @@ export const runtime = 'edge';
 // POST /admin/automations/user-workflows/[workflowId] - Attach workflow to user
 export async function POST(
   request: NextRequest,
-  { params }: { params: { workflowId: string } }
+  { params }: { params: Promise<{ workflowId: string }> }
 ) {
   try {
-    const workflowId = params.workflowId;
+    const { workflowId } = await params;
 
     if (!workflowId || isNaN(Number(workflowId))) {
       return NextResponse.json(
@@ -132,10 +132,10 @@ export async function POST(
 // GET /admin/automations/user-workflows/[workflowId] - Get user workflow by workflow ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { workflowId: string } }
+  { params }: { params: Promise<{ workflowId: string }> }
 ) {
   try {
-    const workflowId = params.workflowId;
+    const { workflowId } = await params;
 
     if (!workflowId || isNaN(Number(workflowId))) {
       return NextResponse.json(
