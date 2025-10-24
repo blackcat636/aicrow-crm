@@ -51,6 +51,10 @@ export interface Workflow {
   projectId: number | null;
   n8nId: string;
   name: string;
+  displayName?: string;
+  displayDescription?: string;
+  availableToUsers?: boolean;
+  priceUsd?: number;
   active: boolean;
   tags: string[];
   nodes: number;
@@ -74,6 +78,13 @@ export interface WorkflowsApiResponse {
     totalPages: number;
   };
   message?: string;
+}
+
+export interface WorkflowUpdateRequest {
+  displayName?: string;
+  displayDescription?: string;
+  availableToUsers?: boolean;
+  priceUsd?: number;
 }
 
 export interface WorkflowApiResponse {

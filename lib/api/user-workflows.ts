@@ -13,6 +13,80 @@ const API_URL = (
 ).replace(/\/+$/, '');
 
 /**
+ * Attach workflow to user
+ * POST /admin/automations/user-workflows/[workflowId]
+ */
+export async function attachWorkflowToUser(
+  workflowId: number,
+  data: {
+    name: string;
+    description: string;
+    isActive: boolean;
+    scheduleType: 'manual' | 'scheduled' | 'triggered';
+  }
+): Promise<UserWorkflowApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/user-workflows/${workflowId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          workflowId,
+          ...data
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to attach workflow to user');
+    }
+
+    const result = (await response.json()) as UserWorkflowApiResponse;
+
+    if (result.status === 200 || result.status === 0 || result.status === 201) {
+      return result;
+    } else {
+      throw new Error(result.message || 'Failed to attach workflow to user');
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Get user workflow by workflow ID
+ * GET /admin/automations/user-workflows/[workflowId]
+ */
+export async function getUserWorkflowByWorkflowId(
+  workflowId: number
+): Promise<UserWorkflowApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/user-workflows/${workflowId}`
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to fetch user workflow');
+    }
+
+    const result = (await response.json()) as UserWorkflowApiResponse;
+
+    if (result.status === 200 || result.status === 0) {
+      return result;
+    } else {
+      throw new Error(result.message || 'Failed to fetch user workflow');
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
  * Get all user workflows for a specific user
  * GET /admin/automations/users/:userId/workflows
  */

@@ -1,7 +1,8 @@
 import { fetchWithAuth } from '../api';
 import {
   WorkflowsApiResponse,
-  WorkflowApiResponse
+  WorkflowApiResponse,
+  WorkflowUpdateRequest
 } from '@/interface/Workflow';
 
 // Remove trailing slash from API_URL to avoid double slashes
@@ -64,6 +65,85 @@ export async function getWorkflowById(
     }
   } catch (error) {
     console.error('❌ API: Error in getWorkflowById:', error);
+    return {
+      status: 0,
+      message: 'Network error',
+      data: {
+        id: 0,
+        instanceId: 0,
+        instance: {
+          id: 0,
+          name: '',
+          description: null,
+          apiUrl: '',
+          apiKey: '',
+          isDefault: false,
+          isActive: false,
+          syncProjects: false,
+          syncWorkflows: false,
+          syncExecutions: false,
+          syncInterval: 0,
+          version: null,
+          lastSyncAt: '',
+          lastErrorAt: null,
+          lastError: null,
+          totalProjects: 0,
+          totalWorkflows: 0,
+          totalExecutions: 0,
+          createdAt: '',
+          updatedAt: ''
+        },
+        projectId: null,
+        n8nId: '',
+        name: '',
+        active: false,
+        tags: [],
+        nodes: 0,
+        nodesData: [],
+        connections: 0,
+        connectionsData: {},
+        n8nCreatedAt: '',
+        n8nUpdatedAt: '',
+        syncedAt: '',
+        createdAt: '',
+        updatedAt: ''
+      }
+    };
+  }
+}
+
+export async function updateWorkflow(
+  id: number,
+  updateData: WorkflowUpdateRequest
+): Promise<WorkflowApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/workflows/${id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update workflow with id ${id}`);
+    }
+
+    const data = (await response.json()) as WorkflowApiResponse;
+
+    // Check if successful status (200 or 0)
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    } else {
+      throw new Error(
+        data.message || `Failed to update workflow with id ${id}`
+      );
+    }
+  } catch (error) {
+    console.error('❌ API: Error in updateWorkflow:', error);
     return {
       status: 0,
       message: 'Network error',

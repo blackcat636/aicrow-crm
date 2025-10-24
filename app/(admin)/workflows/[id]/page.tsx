@@ -21,6 +21,7 @@ import {
   IconClock,
   IconPlayerStop
 } from '@tabler/icons-react';
+import { EditWorkflowDialog } from '@/components/workflows/edit-workflow-dialog';
 import Link from 'next/link';
 
 export default function WorkflowDetailPage() {
@@ -86,7 +87,7 @@ export default function WorkflowDetailPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Завантаження workflow...</p>
+            <p className="text-muted-foreground">Loading workflow...</p>
           </div>
         </div>
       </div>
@@ -98,11 +99,11 @@ export default function WorkflowDetailPage() {
       <div className="flex flex-1 flex-col">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <p className="text-destructive mb-4">{error || 'Workflow не знайдено'}</p>
+            <p className="text-destructive mb-4">{error || 'Workflow not found'}</p>
             <Link href="/workflows">
               <Button variant="outline">
                 <IconArrowLeft className="h-4 w-4 mr-2" />
-                Повернутися до списку
+                Back to list
               </Button>
             </Link>
           </div>
@@ -130,6 +131,10 @@ export default function WorkflowDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <EditWorkflowDialog 
+              workflow={workflow} 
+              onWorkflowUpdated={(updatedWorkflow) => setWorkflow(updatedWorkflow)}
+            />
             <Badge 
               variant={workflow.active ? "default" : "outline"}
               className="px-3 py-1"
@@ -139,7 +144,7 @@ export default function WorkflowDetailPage() {
               ) : (
                 <IconCircleCheckFilled className="fill-red-500 dark:fill-red-400 mr-1 h-3 w-3" />
               )}
-              {workflow.active ? "Активний" : "Неактивний"}
+              {workflow.active ? "Active" : "Inactive"}
             </Badge>
           </div>
         </div>
@@ -203,6 +208,44 @@ export default function WorkflowDetailPage() {
           </Card>
         </div>
 
+        {/* Workflow Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IconSettings className="h-4 w-4" />
+              Workflow Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="font-medium text-sm">Display Name</p>
+                <p className="text-muted-foreground">
+                  {workflow.displayName || 'Not set'}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-sm">Price</p>
+                <p className="text-muted-foreground">
+                  {workflow.priceUsd ? `$${workflow.priceUsd}` : 'Free'}
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="font-medium text-sm">Description</p>
+                <p className="text-muted-foreground">
+                  {workflow.displayDescription || 'No description provided'}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-sm">Available to Users</p>
+                <Badge variant={workflow.availableToUsers ? "default" : "outline"}>
+                  {workflow.availableToUsers ? "Yes" : "No"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Tags */}
         {workflow.tags && workflow.tags.length > 0 && (
           <Card>
@@ -249,13 +292,13 @@ export default function WorkflowDetailPage() {
                 <div>
                   <p className="font-medium">Default</p>
                   <p className="text-muted-foreground">
-                    {workflow.instance?.isDefault ? 'Так' : 'Ні'}
+                    {workflow.instance?.isDefault ? 'Yes' : 'No'}
                   </p>
                 </div>
                 <div>
                   <p className="font-medium">Active</p>
                   <p className="text-muted-foreground">
-                    {workflow.instance?.isActive ? 'Так' : 'Ні'}
+                    {workflow.instance?.isActive ? 'Yes' : 'No'}
                   </p>
                 </div>
                 <div>
@@ -283,7 +326,7 @@ export default function WorkflowDetailPage() {
                 <div>
                   <p className="font-medium">Project ID</p>
                   <p className="text-muted-foreground">
-                    {workflow.projectId || 'Не встановлено'}
+                    {workflow.projectId || 'Not set'}
                   </p>
                 </div>
                 <div>

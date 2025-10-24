@@ -85,6 +85,10 @@ import Link from "next/link"
 export const schema = z.object({
   id: z.number(),
   name: z.string(),
+  displayName: z.string().optional(),
+  displayDescription: z.string().optional(),
+  availableToUsers: z.boolean().optional(),
+  priceUsd: z.number().optional(),
   active: z.boolean(),
   nodes: z.number(),
   connections: z.number(),
@@ -197,7 +201,7 @@ const columns: ColumnDef<Workflow>[] = [
     cell: ({ row }) => (
       <div className="w-48 flex items-center gap-2">
         <IconSettings className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{row.original.name || 'Unknown'}</span>
+        <span className="font-medium">{row.original.displayName || row.original.name || 'Unknown'}</span>
       </div>
     ),
     enableHiding: false,
@@ -234,6 +238,42 @@ const columns: ColumnDef<Workflow>[] = [
             <IconCircleCheckFilled className="fill-red-500 dark:fill-red-400 mr-1 h-3 w-3" />
           )}
           {row.original.active ? "Active" : "Inactive"}
+        </Badge>
+      </div>
+    ),
+  },
+  {
+    accessorKey: "availableToUsers",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 px-2 lg:px-3"
+        >
+          Available to Users
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <IconArrowsUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      )
+    },
+    cell: ({ row }) => (
+      <div className="w-32">
+        <Badge 
+          variant={row.original.availableToUsers ? "default" : "outline"} 
+          className="text-muted-foreground px-1.5"
+        >
+          {row.original.availableToUsers ? (
+            <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400 mr-1 h-3 w-3" />
+          ) : (
+            <IconCircleCheckFilled className="fill-red-500 dark:fill-red-400 mr-1 h-3 w-3" />
+          )}
+          {row.original.availableToUsers ? "Yes" : "No"}
         </Badge>
       </div>
     ),
@@ -292,6 +332,34 @@ const columns: ColumnDef<Workflow>[] = [
       <div className="w-24 flex items-center gap-2">
         <IconActivity className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm">{String(row.original.nodes)}</span>
+      </div>
+    ),
+  },
+  {
+    accessorKey: "priceUsd",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 px-2 lg:px-3"
+        >
+          Price
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <IconArrowsUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      )
+    },
+    cell: ({ row }) => (
+      <div className="w-24">
+        <span className="text-sm font-medium">
+          {row.original.priceUsd ? `$${row.original.priceUsd}` : 'Free'}
+        </span>
       </div>
     ),
   },
