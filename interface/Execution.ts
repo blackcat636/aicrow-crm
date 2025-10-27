@@ -56,6 +56,7 @@ export interface Execution {
   isArchived: boolean;
   syncedAt: string;
   syncCount: number;
+  priceUsd: string | null;
   createdAt: string;
   updatedAt: string;
   instance: ExecutionInstance;

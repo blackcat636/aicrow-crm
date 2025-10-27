@@ -202,13 +202,13 @@ export default function UserDetailPage() {
               <div className="space-y-3">
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">Referral code:</span>
-                  <p className="text-sm font-mono bg-gray-100 p-2 rounded">{user.referralCode || 'Not set'}</p>
+                  <p className="text-sm font-mono bg-gray-100 p-2 rounded text-black">{user.referralCode || 'Not set'}</p>
                 </div>
                 
                 {user.referredByCode && (
                   <div>
                     <span className="text-sm font-medium text-muted-foreground">Invited by code:</span>
-                    <p className="text-sm font-mono bg-gray-100 p-2 rounded">{user.referredByCode}</p>
+                    <p className="text-sm font-mono bg-gray-100 p-2 rounded text-black">{user.referredByCode}</p>
                   </div>
                 )}
               </div>

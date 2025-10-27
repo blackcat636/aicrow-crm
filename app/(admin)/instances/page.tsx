@@ -5,7 +5,6 @@ export const runtime = 'edge';
 import { useEffect } from 'react'
 import { useInstancesStore } from '@/store/useInstancesStore'
 import { InstancesDataTable } from '@/components/instances/instances-data-table'
-import { CreateInstanceDialog } from '@/components/instances/create-instance-dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { IconServer, IconCircleCheckFilled, IconCircleXFilled } from '@tabler/icons-react'
@@ -37,7 +36,7 @@ export default function InstancesPage() {
               Manage n8n instances and their configurations
             </p>
           </div>
-          <CreateInstanceDialog />
+          {/* <CreateInstanceDialog /> */}
         </div>
 
         {/* Stats Cards */}

@@ -116,7 +116,7 @@ export function InstancesDataTable({
       cell: ({ row }) => (
         <Link 
           href={`/instances/${row.original.id}`}
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
         >
           {String(row.original.id)}
         </Link>

@@ -18,6 +18,7 @@ import {
   IconPlayerStop,
   IconExternalLink,
   IconCode,
+  IconCurrencyDollar,
   IconDatabase
 } from '@tabler/icons-react';
 import Link from 'next/link';
@@ -213,6 +214,21 @@ export default function ExecutionDetailPage() {
               <div className="text-2xl font-bold">{formatDuration(execution.duration)}</div>
               <p className="text-xs text-muted-foreground">
                 {execution.finished ? 'Completed' : 'In progress'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Price</CardTitle>
+              <IconCurrencyDollar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                ${execution.priceUsd || '0.00'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Execution cost
               </p>
             </CardContent>
           </Card>

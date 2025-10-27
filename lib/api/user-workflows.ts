@@ -308,9 +308,44 @@ export async function getWorkflowExecutions(
     };
   }
 }
+export async function getUserExecutionsUserSide(
+  page: number = 1,
+  limit: number = 10
+): Promise<Record<string, unknown>> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/automations/user/executions?page=${page}&limit=${limit}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user executions');
+    }
+
+    const data = await response.json();
+
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    } else {
+      throw new Error(data.message || 'Failed to fetch user executions');
+    }
+  } catch (error) {
+    console.error('Error fetching user executions:', error);
+    return {
+      status: 0,
+      message: 'Network error',
+      data: {
+        items: [],
+        total: 0,
+        page: 0,
+        limit: 0,
+        totalPages: 0
+      }
+    };
+  }
+}
 
 /**
- * Get user executions
+ * Get user executions (admin-side API)
  * GET /admin/automations/users/:userId/executions
  */
 export async function getUserExecutions(

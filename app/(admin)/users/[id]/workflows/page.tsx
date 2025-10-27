@@ -6,7 +6,7 @@ import { use, useEffect } from 'react';
 import { UserWorkflowsDataTable } from "@/components/user-workflows/user-workflows-data-table"
 import { useUserWorkflowsStore } from "@/store/useUserWorkflowsStore"
 import { Button } from "@/components/ui/button"
-import { IconPlus, IconArrowLeft } from "@tabler/icons-react"
+import { IconPlus, IconArrowLeft, IconActivity } from "@tabler/icons-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -69,12 +69,20 @@ export default function UserWorkflowsPage({ params }: PageProps) {
               Page {page} of {Math.ceil(total / limit)} • Total: {total} workflows
             </p>
           </div>
-          <Button asChild>
-            <Link href={`/users/${userId}/workflows/new`}>
-              <IconPlus className="mr-2 h-4 w-4" />
-              Create Workflow
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/executions">
+                <IconActivity className="mr-2 h-4 w-4" />
+                View Executions
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/users/${userId}/workflows/new`}>
+                <IconPlus className="mr-2 h-4 w-4" />
+                Create Workflow
+              </Link>
+            </Button>
+          </div>
         </div>
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <UserWorkflowsDataTable 

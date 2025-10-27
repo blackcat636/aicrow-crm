@@ -396,6 +396,32 @@ export function ExecutionsDataTable({
       ),
     },
     {
+      accessorKey: "priceUsd",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 px-2 lg:px-3"
+          >
+            Price
+            {column.getIsSorted() === "asc" ? (
+              <IconArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <IconArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <IconArrowsUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        )
+      },
+      cell: ({ row }) => (
+        <div className="font-semibold text-green-600">
+          ${row.original.priceUsd || '0.00'}
+        </div>
+      ),
+    },
+    {
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {

@@ -4,8 +4,10 @@ export const runtime = 'edge';
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useUserWorkflowsStore } from "@/store/useUserWorkflowsStore"
 import { getWorkflowExecutions } from "@/lib/api/user-workflows"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,9 +39,11 @@ import {
   IconCircleCheckFilled, 
   IconCircleX,
   IconEdit,
-  IconDeviceFloppy
+  IconDeviceFloppy,
+  IconEye,
+  IconToggleLeft,
+  IconToggleRight
 } from "@tabler/icons-react"
-import { toast } from "sonner"
 
 interface PageProps {
   params: Promise<{ id: string; workflowId: string }>
@@ -51,7 +55,7 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
   const workflowId = parseInt(resolvedParams.workflowId);
   const router = useRouter();
   
-  const { userWorkflows, deleteWorkflow, fetchUserWorkflows, updateWorkflow } = useUserWorkflowsStore()
+  const { userWorkflows, deleteWorkflow, fetchUserWorkflows, updateWorkflow, toggleWorkflow } = useUserWorkflowsStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -80,19 +84,22 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
       setExecutionsLoading(true)
       try {
         const response = await getWorkflowExecutions(workflowId, 1, 5)
+        
         if (response.status === 200 || response.status === 0) {
           const data = response.data as Record<string, unknown>
           const isArrayResponse = Array.isArray(data)
-          setExecutions(isArrayResponse ? data : (data.items as Record<string, unknown>[]) || [])
+          const executionsData = isArrayResponse ? data : (data.items as Record<string, unknown>[]) || []
+          setExecutions(executionsData)
         }
-      } catch {
+      } catch (error) {
+        console.error('Error loading executions:', error)
         toast.error('Failed to load executions')
       } finally {
         setExecutionsLoading(false)
       }
     }
     loadData()
-  }, [userId, workflowId, fetchUserWorkflows])
+  }, [userId, workflowId])
 
   // Update form when workflow is loaded
   useEffect(() => {
@@ -126,6 +133,24 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
     }
   }
 
+
+  const handleToggle = async () => {
+    setIsSubmitting(true)
+    try {
+      const success = await toggleWorkflow(workflowId)
+      if (success) {
+        toast.success(workflow?.isActive ? 'Workflow deactivated successfully' : 'Workflow activated successfully')
+        await fetchUserWorkflows(userId)
+      } else {
+        toast.error('Failed to toggle workflow')
+      }
+    } catch (error) {
+      console.error('Error toggling workflow:', error)
+      toast.error('Error toggling workflow')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -181,10 +206,10 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1">
             <Button
               variant="ghost"
               size="sm"
@@ -204,7 +229,25 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              onClick={handleToggle}
+              disabled={isSubmitting}
+            >
+              {workflow?.isActive ? (
+                <>
+                  <IconToggleLeft className="mr-2 h-4 w-4" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <IconToggleRight className="mr-2 h-4 w-4" />
+                  Activate
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setShowEditForm(true)}
+              disabled={isSubmitting}
             >
               <IconEdit className="mr-2 h-4 w-4" />
               Edit
@@ -212,6 +255,7 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
             <Button
               variant="destructive"
               onClick={() => setShowDeleteDialog(true)}
+              disabled={isSubmitting}
             >
               <IconTrash className="mr-2 h-4 w-4" />
               Delete
@@ -391,6 +435,19 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                   <p className="text-sm text-muted-foreground">Success Rate</p>
                 </div>
               </div>
+              
+              {/* Total Cost */}
+              <div className="border-t pt-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    ${executions.reduce((total, exec) => {
+                      const price = parseFloat(String(exec.priceUsd || '0'))
+                      return total + price
+                    }, 0).toFixed(2)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Cost (priceUsd)</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -416,9 +473,14 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
               <div className="text-center py-8">
                 <IconActivity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Executions</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   This workflow hasn&apos;t been executed yet.
                 </p>
+                <div className="text-xs text-muted-foreground bg-gray-50 p-3 rounded-lg">
+                  <p><strong>Workflow ID:</strong> {workflowId}</p>
+                  <p><strong>Status:</strong> {workflow?.isActive ? 'Active' : 'Inactive'}</p>
+                  <p><strong>Schedule Type:</strong> {workflow?.scheduleType || 'Manual'}</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -429,9 +491,9 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex-shrink-0">
-                        {execution.status === 'success' ? (
+                        {execution.status === '1' || execution.status === 'success' ? (
                           <IconCircleCheckFilled className="h-5 w-5 text-green-500" />
-                        ) : execution.status === 'error' ? (
+                        ) : execution.status === '0' || execution.status === 'error' ? (
                           <IconCircleX className="h-5 w-5 text-red-500" />
                         ) : (
                           <IconClock className="h-5 w-5 text-yellow-500" />
@@ -442,33 +504,45 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                           <span className="font-medium">Execution #{execution.id as string}</span>
                           <Badge
                             variant={
-                              execution.status === 'success' ? 'default' :
-                              execution.status === 'error' ? 'destructive' : 'outline'
+                              execution.status === '1' || execution.status === 'success' ? 'default' :
+                              execution.status === '0' || execution.status === 'error' ? 'destructive' : 'outline'
                             }
                             className={
-                              execution.status === 'success' ? 'bg-green-500' :
-                              execution.status === 'error' ? 'bg-red-500' : ''
+                              execution.status === '1' || execution.status === 'success' ? 'bg-green-500' :
+                              execution.status === '0' || execution.status === 'error' ? 'bg-red-500' : ''
                             }
                           >
-                            {execution.status as string}
+                            {execution.status === '1' ? 'Success' : 
+                             execution.status === '0' ? 'Error' : 
+                             execution.status as string}
                           </Badge>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/executions/${execution.id}`}>
+                              <IconEye className="mr-1 h-4 w-4" />
+                              View
+                            </Link>
+                          </Button>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Started: {execution.startedAt ? new Date(execution.startedAt as string).toLocaleString('uk-UA') : 'N/A'}
-                          {execution.stoppedAt ? (
-                            <> • Duration: {Number(execution.duration)}ms</>
+                          Created: {execution.createdAt ? new Date(execution.createdAt as string).toLocaleString('uk-UA') : 'N/A'}
+                          {execution.startedAt ? (
+                            <> • Started: {new Date(execution.startedAt as string).toLocaleString('uk-UA')}</>
+                          ) : null}
+                          {execution.completedAt ? (
+                            <> • Completed: {new Date(execution.completedAt as string).toLocaleString('uk-UA')}</>
                           ) : null}
                         </div>
                       </div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      {execution.mode ? (
-                        <div>Mode: {String(execution.mode)}</div>
+                      {execution.priceUsd ? (
+                        <div className="text-lg font-bold text-green-600 mb-2">${String(execution.priceUsd)}</div>
                       ) : null}
-                      {execution.executedNodes && execution.nodesCount ? (
-                        <div>
-                          {Number(execution.executedNodes)}/{Number(execution.nodesCount)} nodes
-                        </div>
+                      {execution.triggerType ? (
+                        <div>Trigger: {String(execution.triggerType)}</div>
+                      ) : null}
+                      {execution.n8nExecutionId ? (
+                        <div>N8N ID: {String(execution.n8nExecutionId)}</div>
                       ) : null}
                     </div>
                   </div>

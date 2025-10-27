@@ -978,7 +978,7 @@ export default function InteractiveDocumentation() {
           <div className="text-xs text-muted-foreground text-center">
             <div className="flex items-center justify-center space-x-1 mb-1">
               <IconBook className="h-3 w-3" />
-              <span>AICrow CRM Docs</span>
+              <span>AiPills CRM Docs</span>
             </div>
             <div>Last updated: {new Date().toLocaleDateString()}</div>
           </div>

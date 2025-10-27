@@ -122,6 +122,7 @@ export async function getExecutionById(
         isArchived: false,
         syncedAt: '',
         syncCount: 0,
+        priceUsd: null,
         createdAt: '',
         updatedAt: '',
         instance: {

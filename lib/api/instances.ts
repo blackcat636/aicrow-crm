@@ -48,11 +48,18 @@ export async function getInstanceById(
   id: number
 ): Promise<ApiResponse<Instance>> {
   try {
-    const response = await fetchWithAuth(
-      `${API_URL.replace(/\/$/, '')}/admin/automations/instances/${id}`
-    );
+    const url = `${API_URL.replace(
+      /\/$/,
+      ''
+    )}/admin/automations/instances/${id}`;
+    console.log('Fetching instance by ID from URL:', url);
+    const response = await fetchWithAuth(url);
+
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
 
     const data = await response.json();
+    console.log('Raw API data:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to fetch instance');
@@ -64,7 +71,29 @@ export async function getInstanceById(
       data: data.data
     };
   } catch (error) {
-    console.error('Error fetching instance:', error);
+    console.error('Error fetching instance by ID:', error);
+
+    // Fallback: try to get instance from the list
+    console.log('Trying fallback: get instance from list...');
+    try {
+      const allInstancesResponse = await getAllInstances();
+      if (allInstancesResponse.status === 200) {
+        const instance = allInstancesResponse.data.find(
+          (inst) => inst.id === id
+        );
+        if (instance) {
+          console.log('Found instance in fallback:', instance);
+          return {
+            status: 200,
+            message: 'Instance fetched successfully (fallback)',
+            data: instance
+          };
+        }
+      }
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+    }
+
     return {
       status: 500,
       message:

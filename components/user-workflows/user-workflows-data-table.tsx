@@ -384,7 +384,10 @@ export function UserWorkflowsDataTable({
   // Handle delete workflow - open dialog
   const handleDelete = React.useCallback((id: number) => {
     setDeletingWorkflowId(id)
-    setShowDeleteDialog(true)
+    // Small delay to ensure DropdownMenu closes properly before opening AlertDialog
+    setTimeout(() => {
+      setShowDeleteDialog(true)
+    }, 100)
   }, [])
 
   // Confirm delete workflow
@@ -409,6 +412,20 @@ export function UserWorkflowsDataTable({
       setDeletingWorkflowId(null)
     }
   }
+
+  // Handle dialog close
+  const handleDialogClose = React.useCallback((open: boolean) => {
+    if (!open && !isDeleting) {
+      setShowDeleteDialog(false)
+      setDeletingWorkflowId(null)
+    }
+  }, [isDeleting])
+  
+  // Handle cancel button
+  const handleCancel = React.useCallback(() => {
+    setShowDeleteDialog(false)
+    setDeletingWorkflowId(null)
+  }, [])
 
   const columns = React.useMemo(
     () => createColumns(userId, handleToggle, handleDelete),
@@ -491,6 +508,7 @@ export function UserWorkflowsDataTable({
   })
 
   return (
+    <>
     <Tabs defaultValue="outline" className="w-full flex-col justify-start gap-6">
       <div className="overflow-hidden rounded-lg border">
         <Table>
@@ -618,48 +636,46 @@ export function UserWorkflowsDataTable({
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog 
-        open={showDeleteDialog} 
-        onOpenChange={(open) => {
-          if (!isDeleting) {
-            setShowDeleteDialog(open)
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the workflow
-              {deletingWorkflowId && (
-                <>
-                  {' '}<span className="font-semibold">
-                    &quot;{data.find(w => w.id === deletingWorkflowId)?.workflow?.name || 'Unknown'}&quot;
-                  </span>
-                </>
-              )}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Tabs>
+    
+    {/* Delete Confirmation Dialog - moved outside Tabs */}
+    <AlertDialog 
+      open={showDeleteDialog} 
+      onOpenChange={handleDialogClose}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the workflow
+            {deletingWorkflowId && (
+              <>
+                {' '}<span className="font-semibold">
+                  &quot;{data.find(w => w.id === deletingWorkflowId)?.workflow?.name || 'Unknown'}&quot;
+                </span>
+              </>
+            )}.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   )
 }
 

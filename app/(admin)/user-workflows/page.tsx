@@ -110,12 +110,14 @@ export default function UserWorkflowsOverviewPage() {
             </p>
           </div>
           {selectedUserId && (
-            <Button asChild>
-              <Link href={`/users/${selectedUserId}/workflows/new`}>
-                <IconPlus className="mr-2 h-4 w-4" />
-                Create Workflow
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild>
+                <Link href={`/users/${selectedUserId}/workflows/new`}>
+                  <IconPlus className="mr-2 h-4 w-4" />
+                  Create Workflow
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
 
