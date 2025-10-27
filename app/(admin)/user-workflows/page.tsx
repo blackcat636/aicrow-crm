@@ -98,7 +98,7 @@ export default function UserWorkflowsOverviewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2">
+      <div className="@container/main flex flex-1 flex-col gap-2 px-6 pb-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <div>

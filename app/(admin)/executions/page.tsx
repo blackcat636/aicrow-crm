@@ -42,7 +42,7 @@ export default function ExecutionsPage() {
   }, [workflowId, filters, setFilters])
 
   useEffect(() => {
-    fetchExecutions(1, 50, currentFilters)
+    fetchExecutions(1, 10, currentFilters)
   }, [fetchExecutions, currentFilters])
 
   const successCount = executions.filter(e => e.status === 'success').length
@@ -55,7 +55,7 @@ export default function ExecutionsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -153,6 +153,11 @@ export default function ExecutionsPage() {
                 data={executions} 
                 isLoading={isLoading}
                 onFiltersChange={handleFiltersChange}
+                total={total}
+                page={page}
+                limit={limit}
+                onPageChange={(newPage) => fetchExecutions(newPage, limit, currentFilters)}
+                onPageSizeChange={(newLimit) => fetchExecutions(1, newLimit, currentFilters)}
               />
             )}
           </CardContent>

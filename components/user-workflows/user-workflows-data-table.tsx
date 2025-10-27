@@ -612,6 +612,67 @@ export function UserWorkflowsDataTable({
               <span className="sr-only">Previous page</span>
               <IconChevronLeft className="h-4 w-4" />
             </Button>
+            
+            {/* Page number buttons */}
+            {(() => {
+              const pageCount = table.getPageCount()
+              const currentPage = table.getState().pagination.pageIndex + 1
+              const maxVisible = 7
+              const pages: (number | string)[] = []
+              
+              if (pageCount <= maxVisible) {
+                // Show all pages
+                for (let i = 1; i <= pageCount; i++) {
+                  pages.push(i)
+                }
+              } else {
+                // Show first page
+                if (currentPage <= 3) {
+                  for (let i = 1; i <= 5; i++) {
+                    pages.push(i)
+                  }
+                  pages.push('...')
+                  pages.push(pageCount)
+                }
+                // Show middle pages
+                else if (currentPage >= pageCount - 2) {
+                  pages.push(1)
+                  pages.push('...')
+                  for (let i = pageCount - 4; i <= pageCount; i++) {
+                    pages.push(i)
+                  }
+                }
+                // Show around current
+                else {
+                  pages.push(1)
+                  pages.push('...')
+                  for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                    pages.push(i)
+                  }
+                  pages.push('...')
+                  pages.push(pageCount)
+                }
+              }
+              
+              return pages.map((page, idx) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="px-2">
+                    ...
+                  </span>
+                ) : (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => table.setPageIndex((page as number) - 1)}
+                    disabled={isLoading}
+                  >
+                    {page}
+                  </Button>
+                )
+              ))
+            })()}
+            
             <Button
               variant="outline"
               className="size-8"

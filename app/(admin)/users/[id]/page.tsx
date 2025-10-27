@@ -57,7 +57,7 @@ export default function UserDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2">
+      <div className="@container/main flex flex-1 flex-col gap-2 px-6 pb-6">
         <div className="flex items-center gap-4 mb-6">
           <Link href="/users">
             <Button variant="outline" size="sm">

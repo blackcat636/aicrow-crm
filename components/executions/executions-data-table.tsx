@@ -13,14 +13,21 @@ import {
   useReactTable,
   PaginationState,
 } from "@tanstack/react-table"
-import { ChevronDown, MoreHorizontal } from "lucide-react"
-import { IconArrowUp, IconArrowDown, IconArrowsUpDown } from "@tabler/icons-react"
+import { MoreHorizontal } from "lucide-react"
+import { 
+  IconArrowUp, 
+  IconArrowDown, 
+  IconArrowsUpDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight
+} from "@tabler/icons-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -28,6 +35,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -114,21 +129,39 @@ interface ExecutionsDataTableProps {
   data: Execution[]
   isLoading?: boolean
   onFiltersChange?: (filters: ColumnFiltersState) => void
+  total?: number
+  page?: number
+  limit?: number
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
 }
 
 export function ExecutionsDataTable({ 
   data, 
   isLoading = false,
-  onFiltersChange 
+  onFiltersChange,
+  total = 0,
+  page = 1,
+  limit = 10,
+  onPageChange,
+  onPageSizeChange
 }: ExecutionsDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
   const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
+    pageIndex: page - 1,
+    pageSize: limit,
   })
+
+  // Sync pagination with props
+  React.useEffect(() => {
+    setPagination({
+      pageIndex: page - 1,
+      pageSize: limit,
+    })
+  }, [page, limit])
 
   const handleFiltersChange = React.useCallback((updaterOrValue: ColumnFiltersState | ((old: ColumnFiltersState) => ColumnFiltersState)) => {
     const newFilters = typeof updaterOrValue === 'function' ? updaterOrValue(columnFilters) : updaterOrValue;
@@ -478,7 +511,18 @@ export function ExecutionsDataTable({
     getSortedRowModel: getSortedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const newState = typeof updater === 'function' ? updater(pagination) : updater
+      setPagination(newState)
+      
+      // Call parent pagination handlers
+      if (onPageChange && newState.pageIndex !== pagination.pageIndex) {
+        onPageChange(newState.pageIndex + 1)
+      }
+      if (onPageSizeChange && newState.pageSize !== pagination.pageSize) {
+        onPageSizeChange(newState.pageSize)
+      }
+    },
     state: {
       sorting,
       columnFilters,
@@ -486,6 +530,8 @@ export function ExecutionsDataTable({
       rowSelection,
       pagination,
     },
+    pageCount: Math.ceil(total / limit),
+    manualPagination: true,
     manualFiltering: true,
   })
 
@@ -500,32 +546,6 @@ export function ExecutionsDataTable({
           }
           className="max-w-sm"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -586,28 +606,133 @@ export function ExecutionsDataTable({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex items-center justify-between px-4">
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <div className="space-x-2">
+        <div className="flex w-full items-center gap-4 lg:w-fit">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="rows-per-page" className="text-sm font-medium hidden lg:block">
+              Rows per page
+            </Label>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value))
+              }}
+            >
+              <SelectTrigger id="rows-per-page" className="h-8 w-[70px]">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <IconChevronsLeft className="h-4 w-4" />
+            <span className="sr-only">First page</span>
+          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            <IconChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Previous page</span>
           </Button>
+          
+          {/* Page number buttons */}
+          {(() => {
+            const pageCount = table.getPageCount()
+            const currentPage = table.getState().pagination.pageIndex + 1
+            const maxVisible = 7
+            const pages: (number | string)[] = []
+            
+            if (pageCount <= maxVisible) {
+              // Show all pages
+              for (let i = 1; i <= pageCount; i++) {
+                pages.push(i)
+              }
+            } else {
+              // Show first page
+              if (currentPage <= 3) {
+                for (let i = 1; i <= 5; i++) {
+                  pages.push(i)
+                }
+                pages.push('...')
+                pages.push(pageCount)
+              }
+              // Show middle pages
+              else if (currentPage >= pageCount - 2) {
+                pages.push(1)
+                pages.push('...')
+                for (let i = pageCount - 4; i <= pageCount; i++) {
+                  pages.push(i)
+                }
+              }
+              // Show around current
+              else {
+                pages.push(1)
+                pages.push('...')
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                  pages.push(i)
+                }
+                pages.push('...')
+                pages.push(pageCount)
+              }
+            }
+            
+            return pages.map((page, idx) => (
+              page === '...' ? (
+                <span key={`ellipsis-${idx}`} className="px-2">
+                  ...
+                </span>
+              ) : (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => table.setPageIndex((page as number) - 1)}
+                  disabled={isLoading}
+                >
+                  {page}
+                </Button>
+              )
+            ))
+          })()}
+          
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            <IconChevronRight className="h-4 w-4" />
+            <span className="sr-only">Next page</span>
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            <IconChevronsRight className="h-4 w-4" />
+            <span className="sr-only">Last page</span>
+          </Button>
+          </div>
         </div>
       </div>
     </div>

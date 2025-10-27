@@ -16,7 +16,6 @@ import {
   IconCircleXFilled,
   IconClock,
   IconPlayerStop,
-  IconExternalLink,
   IconCode,
   IconCurrencyDollar,
   IconDatabase
@@ -151,7 +150,7 @@ export default function ExecutionDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -175,18 +174,6 @@ export default function ExecutionDetailPage() {
               {getStatusIcon(execution.status)}
               <span className="ml-1">{getStatusText(execution.status)}</span>
             </Badge>
-            {execution.instance?.apiUrl && (
-              <Link 
-                href={`${execution.instance.apiUrl}/execution/${execution.n8nId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" size="sm">
-                  <IconExternalLink className="h-4 w-4 mr-2" />
-                  Open in n8n
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
 

@@ -9,7 +9,7 @@ import { IconCoins, IconShield, IconAlertTriangle } from '@tabler/icons-react';
 export default function AdminBalanceDepositPage() {
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
         {/* Header */}
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold flex items-center gap-3">

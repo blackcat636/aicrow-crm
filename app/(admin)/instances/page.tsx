@@ -27,7 +27,7 @@ export default function InstancesPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

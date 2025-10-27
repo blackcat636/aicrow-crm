@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {Moon, Sun} from "lucide-react"
+import { IconSun, IconMoon } from "@tabler/icons-react"
 import {useTheme} from "next-themes"
 
 import {Button} from "@/components/ui/button"
@@ -21,19 +21,20 @@ export function ModeToggle() {
     }
 
     return (
-        <div>
-            <Button variant="outline" size="icon" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-                <Sun className={`h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all ${
-                    theme === "dark" ? "-rotate-90 scale-0" : ""
-                }`}/>
-                <Moon className={`absolute h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all ${
-                    theme === "light" ? "rotate-90 scale-0" : ""
-                }`}/>
+        <div className="flex items-center gap-2">
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9"
+                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            >
+                {theme === "light" ? (
+                    <IconSun className="h-5 w-5" />
+                ) : (
+                    <IconMoon className="h-5 w-5" />
+                )}
                 <span className="sr-only">Toggle theme</span>
             </Button>
-            <div className="text-sm text-muted-foreground">
-                {theme === "light" ? "Light" : theme === "dark" ? "Dark" : "System"}
-            </div>
         </div>
     )
 }
