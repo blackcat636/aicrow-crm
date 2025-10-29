@@ -32,7 +32,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
     displayName: workflow.displayName || '',
     displayDescription: workflow.displayDescription || '',
     availableToUsers: workflow.availableToUsers || false,
-    priceUsd: workflow.priceUsd || 0,
+    priceUsd: Math.floor(workflow.priceUsd || 0),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +63,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
       displayName: workflow.displayName || '',
       displayDescription: workflow.displayDescription || '',
       availableToUsers: workflow.availableToUsers || false,
-      priceUsd: workflow.priceUsd || 0,
+      priceUsd: Math.floor(workflow.priceUsd || 0),
     });
     setOpen(false);
   };
@@ -123,7 +123,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
                 step="1"
                 min="0"
                 value={formData.priceUsd}
-                onChange={(e) => setFormData(prev => ({ ...prev, priceUsd: parseInt(e.target.value) || 0 }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, priceUsd: Math.floor(parseInt(e.target.value) || 0) }))}
                 placeholder="0"
               />
             </div>

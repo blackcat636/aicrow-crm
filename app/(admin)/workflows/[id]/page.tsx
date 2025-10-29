@@ -220,7 +220,7 @@ export default function WorkflowDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="font-medium text-sm">Display Name</p>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground break-words">
                   {workflow.displayName || 'Not set'}
                 </p>
               </div>
@@ -232,7 +232,7 @@ export default function WorkflowDetailPage() {
               </div>
               <div className="md:col-span-2">
                 <p className="font-medium text-sm">Description</p>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground break-words">
                   {workflow.displayDescription || 'No description provided'}
                 </p>
               </div>
