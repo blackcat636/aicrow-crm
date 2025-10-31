@@ -192,8 +192,8 @@ const columns: ColumnDef<Workflow>[] = [
     },
     cell: ({ row }) => (
       <div className="w-48 flex items-center gap-2">
-        <IconSettings className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{row.original.displayName || row.original.name || 'Unknown'}</span>
+        <IconSettings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <span className="font-medium truncate">{row.original.displayName || row.original.name || 'Unknown'}</span>
       </div>
     ),
     enableHiding: false,

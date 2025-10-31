@@ -116,7 +116,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="priceUsd">Price (USD)</Label>
+              <Label htmlFor="priceUsd">Price (Token)</Label>
               <Input
                 id="priceUsd"
                 type="number"

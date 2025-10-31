@@ -346,7 +346,7 @@ export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
                   value={formData.amount || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
                   className={errors.amount ? 'border-red-500' : ''}
-                  placeholder="0.00"
+                  placeholder="0.000"
                 />
                 {errors.amount && <p className="text-sm text-red-500">{errors.amount}</p>}
                 <p className="text-xs text-muted-foreground">

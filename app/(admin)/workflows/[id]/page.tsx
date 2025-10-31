@@ -116,21 +116,21 @@ export default function WorkflowDetailPage() {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
             <Link href="/workflows">
               <Button variant="ghost" size="icon">
                 <IconArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold">{workflow.name || 'Unknown'}</h1>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-3xl font-bold break-words">{workflow.displayName || workflow.name || 'Unknown'}</h1>
               <p className="text-muted-foreground">
                 Workflow ID: {String(workflow.id)} • n8n ID: {workflow.n8nId || 'Unknown'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <EditWorkflowDialog 
               workflow={workflow} 
               onWorkflowUpdated={(updatedWorkflow) => setWorkflow(updatedWorkflow)}

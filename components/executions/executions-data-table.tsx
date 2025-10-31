@@ -10,8 +10,10 @@ import {
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   useReactTable,
   PaginationState,
+  FilterFn,
 } from "@tanstack/react-table"
 import { MoreHorizontal } from "lucide-react"
 import { 
@@ -150,6 +152,7 @@ export function ExecutionsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+  const [globalFilter, setGlobalFilter] = React.useState('')
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: page - 1,
     pageSize: limit,
@@ -166,9 +169,18 @@ export function ExecutionsDataTable({
   const handleFiltersChange = React.useCallback((updaterOrValue: ColumnFiltersState | ((old: ColumnFiltersState) => ColumnFiltersState)) => {
     const newFilters = typeof updaterOrValue === 'function' ? updaterOrValue(columnFilters) : updaterOrValue;
     setColumnFilters(newFilters)
-    if (onFiltersChange) {
-      onFiltersChange(newFilters)
+    
+    // Only trigger server-side filter changes for status and mode
+    // Workflow search is handled client-side
+    const serverSideFilters = newFilters.filter((f) => f.id === 'status' || f.id === 'mode')
+    if (onFiltersChange && serverSideFilters.length > 0) {
+      onFiltersChange(serverSideFilters)
+    } else if (onFiltersChange && newFilters.length === 0) {
+      // If all filters cleared, notify parent
+      onFiltersChange([])
     }
+    // For workflow filter (client-side), just update local state
+    
     setPagination(prev => ({ ...prev, pageIndex: 0 }))
   }, [onFiltersChange, columnFilters])
 
@@ -197,6 +209,16 @@ export function ExecutionsDataTable({
     },
     {
       accessorKey: "id",
+      filterFn: ((row, columnId, filterValue) => {
+        const execution = row.original as Execution
+        const idString = String(execution.id)
+        const searchValue = String(filterValue || '').toLowerCase().trim()
+        
+        if (!searchValue) return true
+        
+        return idString.includes(searchValue)
+      }) as FilterFn<Execution>,
+      enableGlobalFilter: true,
       header: ({ column }) => {
         return (
           <Button
@@ -226,6 +248,16 @@ export function ExecutionsDataTable({
     },
     {
       accessorKey: "n8nId",
+      filterFn: ((row, columnId, filterValue) => {
+        const execution = row.original as Execution
+        const n8nIdString = String(execution.n8nId)
+        const searchValue = String(filterValue || '').toLowerCase().trim()
+        
+        if (!searchValue) return true
+        
+        return n8nIdString.toLowerCase().includes(searchValue)
+      }) as FilterFn<Execution>,
+      enableGlobalFilter: true,
       header: ({ column }) => {
         return (
           <Button
@@ -255,7 +287,19 @@ export function ExecutionsDataTable({
     },
     {
       id: "workflow",
-      accessorFn: (row) => row.workflow?.name || row.workflowName || 'Unknown',
+      accessorFn: (row) => {
+        return row.workflow?.name || row.workflowName || 'Unknown'
+      },
+      filterFn: ((row, columnId, filterValue) => {
+        const execution = row.original as Execution
+        const workflowName = String(execution.workflow?.name || execution.workflowName || 'Unknown')
+        const searchValue = String(filterValue || '').toLowerCase().trim()
+        
+        if (!searchValue) return true
+        
+        return workflowName.toLowerCase().includes(searchValue)
+      }) as FilterFn<Execution>,
+      enableGlobalFilter: true,
       header: ({ column }) => {
         return (
           <Button
@@ -509,6 +553,25 @@ export function ExecutionsDataTable({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, columnId, filterValue) => {
+      const execution = row.original as Execution
+      const searchValue = String(filterValue || '').toLowerCase().trim()
+      
+      if (!searchValue) return true
+      
+      // Search in ID
+      if (String(execution.id).includes(searchValue)) return true
+      
+      // Search in n8n ID
+      if (execution.n8nId.toLowerCase().includes(searchValue)) return true
+      
+      // Search in workflow name
+      const workflowName = String(execution.workflow?.name || execution.workflowName || 'Unknown')
+      if (workflowName.toLowerCase().includes(searchValue)) return true
+      
+      return false
+    },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: (updater) => {
@@ -529,21 +592,20 @@ export function ExecutionsDataTable({
       columnVisibility,
       rowSelection,
       pagination,
+      globalFilter,
     },
     pageCount: Math.ceil(total / limit),
     manualPagination: true,
-    manualFiltering: true,
+    manualFiltering: false, // Enable client-side filtering for workflow search
   })
 
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter by workflow name..."
-          value={(table.getColumn("workflow")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("workflow")?.setFilterValue(event.target.value)
-          }
+          placeholder="Search by ID, n8n ID, or workflow name..."
+          value={globalFilter ?? ""}
+          onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
       </div>

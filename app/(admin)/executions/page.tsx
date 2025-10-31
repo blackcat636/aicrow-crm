@@ -42,7 +42,8 @@ export default function ExecutionsPage() {
   }, [workflowId, filters, setFilters])
 
   useEffect(() => {
-    fetchExecutions(1, 10, currentFilters)
+    // Load more data for client-side search (100 records)
+    fetchExecutions(1, 100, currentFilters)
   }, [fetchExecutions, currentFilters])
 
   const successCount = executions.filter(e => e.status === 'success').length

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     // Add currencyCode for single currency system (balance index 0)
     const requestBody = {
       ...body,
-      currencyCode: 'USD' // Default currency for single currency system
+      currencyCode: 'Token' // Default currency for single currency system
     };
 
     const response = await fetch(`${API_URL}admin/balance/admin-deposit`, {

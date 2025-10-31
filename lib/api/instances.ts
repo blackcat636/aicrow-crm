@@ -48,52 +48,55 @@ export async function getInstanceById(
   id: number
 ): Promise<ApiResponse<Instance>> {
   try {
-    const url = `${API_URL.replace(
-      /\/$/,
-      ''
-    )}/admin/automations/instances/${id}`;
-    console.log('Fetching instance by ID from URL:', url);
-    const response = await fetchWithAuth(url);
-
-    console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
-
-    const data = await response.json();
-    console.log('Raw API data:', data);
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch instance');
+    // Backend doesn't support GET /admin/automations/instances/{id}
+    // Use fallback: get all instances and find the one by ID
+    const allInstancesResponse = await getAllInstances();
+    
+    if (allInstancesResponse.status === 200) {
+      const instance = allInstancesResponse.data.find(
+        (inst) => inst.id === id
+      );
+      
+      if (instance) {
+        return {
+          status: 200,
+          message: 'Instance fetched successfully',
+          data: instance
+        };
+      } else {
+        return {
+          status: 404,
+          message: 'Instance not found',
+          data: {
+            id: 0,
+            name: '',
+            description: null,
+            apiUrl: '',
+            apiKey: '',
+            isDefault: false,
+            isActive: false,
+            syncProjects: false,
+            syncWorkflows: false,
+            syncExecutions: false,
+            syncInterval: 30,
+            version: null,
+            lastSyncAt: '',
+            lastErrorAt: null,
+            lastError: null,
+            totalProjects: 0,
+            totalWorkflows: 0,
+            totalExecutions: 0,
+            createdAt: '',
+            updatedAt: ''
+          }
+        };
+      }
     }
 
-    return {
-      status: response.status,
-      message: 'Instance fetched successfully',
-      data: data.data
-    };
+    throw new Error('Failed to fetch instances list');
   } catch (error) {
     console.error('Error fetching instance by ID:', error);
-
-    // Fallback: try to get instance from the list
-    console.log('Trying fallback: get instance from list...');
-    try {
-      const allInstancesResponse = await getAllInstances();
-      if (allInstancesResponse.status === 200) {
-        const instance = allInstancesResponse.data.find(
-          (inst) => inst.id === id
-        );
-        if (instance) {
-          console.log('Found instance in fallback:', instance);
-          return {
-            status: 200,
-            message: 'Instance fetched successfully (fallback)',
-            data: instance
-          };
-        }
-      }
-    } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError);
-    }
-
+    
     return {
       status: 500,
       message:
