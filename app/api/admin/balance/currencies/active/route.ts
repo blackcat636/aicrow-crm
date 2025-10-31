@@ -21,13 +21,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           status: response.status,
-          message: data.message || 'Failed to fetch active currencies'
+          message: data.message || 'Failed to fetch active currencies',
+          data: []
         },
         { status: response.status }
       );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    // Return data in consistent format
+    // Backend might return array directly or wrapped in data property
+    const currencies = Array.isArray(data) ? data : (data.data || data.items || []);
+    
+    return NextResponse.json({
+      status: 200,
+      data: currencies,
+      message: 'Active currencies fetched successfully'
+    }, { status: 200 });
   } catch (error) {
     console.error('Fetch active currencies error:', error);
     return NextResponse.json(

@@ -78,10 +78,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Add currencyCode for single currency system (balance index 0)
+    // Add currencyCode if not provided - use CAD as default
     const requestBody = {
       ...body,
-      currencyCode: 'Token' // Default currency for single currency system
+      currencyCode: body.currencyCode || 'USD'
     };
 
     const response = await fetch(`${API_URL}admin/balance/admin-deposit`, {

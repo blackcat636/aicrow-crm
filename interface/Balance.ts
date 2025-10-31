@@ -59,6 +59,41 @@ export interface BalanceAuditLog {
   description: string;
   adminUserId?: number;
   adminUsername?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface Currency {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  is_active: boolean;
+  precision: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCurrencyRequest {
+  code: string;
+  name: string;
+  symbol?: string;
+  precision: number;
+  is_crypto?: boolean;
+  is_virtual?: boolean;
+  exchange_rate_to_usd?: number;
+  icon_url?: string;
+  description?: string;
+}
+
+export interface CreateCurrencyResponse {
+  status: number;
+  data: Currency;
+  message: string;
+}
+
+export interface ActiveCurrenciesResponse {
+  status: number;
+  data: Currency[];
+  message?: string;
 }
