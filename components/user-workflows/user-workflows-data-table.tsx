@@ -164,10 +164,10 @@ const createColumns = (
       )
     },
     cell: ({ row }) => (
-      <div className="w-48 flex items-center gap-2">
-        <IconSettings className="h-4 w-4 text-muted-foreground" />
-        <Link href={`/users/${userId}/workflows/${row.original.id}`}>
-          <span className="font-medium hover:underline cursor-pointer">
+      <div className="w-48 flex items-center gap-2 min-w-0 overflow-hidden">
+        <IconSettings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <Link href={`/users/${userId}/workflows/${row.original.id}`} className="min-w-0 flex-1">
+          <span className="font-medium hover:underline cursor-pointer truncate block">
             {row.original.name || 'Unknown'}
           </span>
         </Link>
@@ -234,9 +234,9 @@ const createColumns = (
       )
     },
     cell: ({ row }) => (
-      <div className="w-48 flex items-center gap-2">
-        <IconSettings className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
+      <div className="w-48 flex items-center gap-2 min-w-0 overflow-hidden">
+        <IconSettings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <span className="text-sm text-muted-foreground truncate min-w-0">
           {row.original.workflow?.name || 'Unknown'}
         </span>
       </div>

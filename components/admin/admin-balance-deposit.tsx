@@ -37,6 +37,31 @@ export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Helper function to parse amount with proper precision handling
+  const parseAmount = (value: string): number => {
+    if (!value || value.trim() === '') return 0;
+    
+    // Remove any non-digit characters except decimal point
+    const cleaned = value.replace(/[^\d.]/g, '');
+    
+    // Handle multiple decimal points - keep only the first one
+    const parts = cleaned.split('.');
+    let normalized = parts[0] || '0';
+    if (parts.length > 1) {
+      // Limit to 8 decimal places
+      const decimalPart = parts.slice(1).join('').slice(0, 8);
+      if (decimalPart) {
+        normalized += '.' + decimalPart;
+      }
+    }
+    
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed)) return 0;
+    
+    // Round to 8 decimal places to avoid floating point precision issues
+    return Math.round(parsed * 100000000) / 100000000;
+  };
+
   // Load users on component mount
   useEffect(() => {
     fetchUsers(1, 100);
@@ -339,12 +364,13 @@ export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
                 </Label>
                 <Input
                   id="amount"
-                  type="number"
-                  step="0.00000001"
-                  min="0"
-                  max="1000000"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.amount || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                  onChange={(e) => {
+                    const parsedAmount = parseAmount(e.target.value);
+                    setFormData(prev => ({ ...prev, amount: parsedAmount }));
+                  }}
                   className={errors.amount ? 'border-red-500' : ''}
                   placeholder="0.000"
                 />

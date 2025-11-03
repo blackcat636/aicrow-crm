@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     // Add currencyCode if not provided - use CAD as default
     const requestBody = {
       ...body,
-      currencyCode: body.currencyCode || 'USD'
+      currencyCode: body.currencyCode || 'TKN'
     };
 
     const response = await fetch(`${API_URL}admin/balance/admin-deposit`, {
