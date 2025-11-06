@@ -31,15 +31,25 @@ export default function ExecutionsPage() {
   const [currentFilters, setCurrentFilters] = useState(filters)
 
   useEffect(() => {
-    // Set workflow filter if workflowId is provided in URL
+    // Apply workflow filter only when URL param changes to avoid loops
     if (workflowId) {
-      const newFilters = { ...filters, workflowId }
-      setCurrentFilters(newFilters)
-      setFilters(newFilters)
+      if (filters.workflowId !== workflowId) {
+        const newFilters = { ...filters, workflowId }
+        setCurrentFilters(newFilters)
+        setFilters(newFilters)
+      } else {
+        setCurrentFilters(filters)
+      }
     } else {
       setCurrentFilters(filters)
     }
-  }, [workflowId, filters, setFilters])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId])
+
+  useEffect(() => {
+    // Keep local filters in sync with store changes (without re-applying setFilters)
+    setCurrentFilters(filters)
+  }, [filters])
 
   useEffect(() => {
     // Load more data for client-side search (100 records)

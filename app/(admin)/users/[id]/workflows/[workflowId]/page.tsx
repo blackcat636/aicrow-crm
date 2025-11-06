@@ -62,6 +62,8 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
   const [showEditForm, setShowEditForm] = useState(false)
   const [executions, setExecutions] = useState<Record<string, unknown>[]>([])
   const [executionsLoading, setExecutionsLoading] = useState(false)
+  const [expandedInputs, setExpandedInputs] = useState<Record<string, boolean>>({})
+  const [expandedResults, setExpandedResults] = useState<Record<string, boolean>>({})
   
   const [formData, setFormData] = useState({
     name: '',
@@ -487,64 +489,151 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                 {executions.map((execution) => (
                   <div
                     key={execution.id as string}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="p-4 border rounded-lg"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="flex-shrink-0">
-                        {execution.status === '1' || execution.status === 'success' ? (
-                          <IconCircleCheckFilled className="h-5 w-5 text-green-500" />
-                        ) : execution.status === '0' || execution.status === 'error' ? (
-                          <IconCircleX className="h-5 w-5 text-red-500" />
-                        ) : (
-                          <IconClock className="h-5 w-5 text-yellow-500" />
-                        )}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-shrink-0">
+                          {execution.status === '1' || execution.status === 'success' ? (
+                            <IconCircleCheckFilled className="h-5 w-5 text-green-500" />
+                          ) : execution.status === '0' || execution.status === 'error' ? (
+                            <IconCircleX className="h-5 w-5 text-red-500" />
+                          ) : (
+                            <IconClock className="h-5 w-5 text-yellow-500" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Execution #{execution.id as string}</span>
+                            <Badge
+                              variant={
+                                execution.status === '1' || execution.status === 'success' ? 'default' :
+                                execution.status === '0' || execution.status === 'error' ? 'destructive' : 'outline'
+                              }
+                              className={
+                                execution.status === '1' || execution.status === 'success' ? 'bg-green-500' :
+                                execution.status === '0' || execution.status === 'error' ? 'bg-red-500' : ''
+                              }
+                            >
+                              {execution.status === '1' ? 'Success' : 
+                               execution.status === '0' ? 'Error' : 
+                               execution.status as string}
+                            </Badge>
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/executions/${execution.id}`}>
+                                <IconEye className="mr-1 h-4 w-4" />
+                                View
+                              </Link>
+                            </Button>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Created: {execution.createdAt ? new Date(execution.createdAt as string).toLocaleString('uk-UA') : 'N/A'}
+                            {execution.startedAt ? (
+                              <> • Started: {new Date(execution.startedAt as string).toLocaleString('uk-UA')}</>
+                            ) : null}
+                            {execution.completedAt ? (
+                              <> • Completed: {new Date(execution.completedAt as string).toLocaleString('uk-UA')}</>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Execution #{execution.id as string}</span>
-                          <Badge
-                            variant={
-                              execution.status === '1' || execution.status === 'success' ? 'default' :
-                              execution.status === '0' || execution.status === 'error' ? 'destructive' : 'outline'
-                            }
-                            className={
-                              execution.status === '1' || execution.status === 'success' ? 'bg-green-500' :
-                              execution.status === '0' || execution.status === 'error' ? 'bg-red-500' : ''
-                            }
-                          >
-                            {execution.status === '1' ? 'Success' : 
-                             execution.status === '0' ? 'Error' : 
-                             execution.status as string}
-                          </Badge>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/executions/${execution.id}`}>
-                              <IconEye className="mr-1 h-4 w-4" />
-                              View
-                            </Link>
-                          </Button>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Created: {execution.createdAt ? new Date(execution.createdAt as string).toLocaleString('uk-UA') : 'N/A'}
-                          {execution.startedAt ? (
-                            <> • Started: {new Date(execution.startedAt as string).toLocaleString('uk-UA')}</>
-                          ) : null}
-                          {execution.completedAt ? (
-                            <> • Completed: {new Date(execution.completedAt as string).toLocaleString('uk-UA')}</>
-                          ) : null}
-                        </div>
+                      <div className="text-right text-sm text-muted-foreground">
+                        {execution.priceUsd ? (
+                          <div className="text-lg font-bold text-green-600 mb-2">${String(execution.priceUsd)}</div>
+                        ) : null}
+                        {execution.triggerType ? (
+                          <div>Trigger: {String(execution.triggerType)}</div>
+                        ) : null}
+                        {execution.n8nExecutionId ? (
+                          <div>N8N ID: {String(execution.n8nExecutionId)}</div>
+                        ) : null}
                       </div>
                     </div>
-                    <div className="text-right text-sm text-muted-foreground">
-                      {execution.priceUsd ? (
-                        <div className="text-lg font-bold text-green-600 mb-2">${String(execution.priceUsd)}</div>
-                      ) : null}
-                      {execution.triggerType ? (
-                        <div>Trigger: {String(execution.triggerType)}</div>
-                      ) : null}
-                      {execution.n8nExecutionId ? (
-                        <div>N8N ID: {String(execution.n8nExecutionId)}</div>
-                      ) : null}
-                    </div>
+
+                    {(() => {
+                      const idKey = String(execution.id)
+                      const inputRaw = (execution.inputData ?? null) as unknown
+                      const resultRaw = (execution.resultData ?? null) as unknown
+
+                      const toPretty = (val: unknown) => {
+                        try {
+                          if (val === null || val === undefined) return ''
+                          if (typeof val === 'string') {
+                            try {
+                              const parsed = JSON.parse(val)
+                              return JSON.stringify(parsed, null, 2)
+                            } catch {
+                              return val
+                            }
+                          }
+                          return JSON.stringify(val, null, 2)
+                        } catch {
+                          return String(val)
+                        }
+                      }
+
+                      const buildPreview = (text: string, expanded: boolean) => {
+                        const maxLines = 8
+                        const maxChars = 400
+                        const lines = text.split('\n')
+                        const isLong = lines.length > maxLines || text.length > maxChars
+                        if (!isLong || expanded) return { display: text, isLong }
+                        if (lines.length > maxLines) {
+                          return { display: lines.slice(0, maxLines).join('\n') + '\n...', isLong }
+                        }
+                        return { display: text.slice(0, maxChars) + '...', isLong }
+                      }
+
+                      let inputText = toPretty(inputRaw)
+                      let resultMessage =
+                        (resultRaw && typeof resultRaw === 'object' && (resultRaw as any).massager != null)
+                          ? String((resultRaw as any).massager)
+                          : (resultRaw && typeof resultRaw === 'object' && (resultRaw as any).message != null)
+                            ? String((resultRaw as any).message)
+                            : (resultRaw ? toPretty(resultRaw) : '')
+
+                      // No mocked Input Data — if empty, UI will show 'No input'
+
+                      const inputState = expandedInputs[idKey] || false
+                      const resultState = expandedResults[idKey] || false
+                      const inputPreview = buildPreview(inputText, inputState)
+                      const resultPreview = buildPreview(resultMessage, resultState)
+
+                      return (
+                        <div className="mt-3 w-full grid md:grid-cols-2 gap-4">
+                          <div className="border rounded-md p-3 bg-muted/30">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Input Data</span>
+                              {inputPreview.isLong && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setExpandedInputs((prev) => ({ ...prev, [idKey]: !inputState }))}
+                                >
+                                  {inputState ? 'Show less' : 'Show more'}
+                                </Button>
+                              )}
+                            </div>
+                            <pre className="text-xs overflow-x-auto whitespace-pre-wrap font-mono leading-snug">{inputText ? inputPreview.display : 'No input'}</pre>
+                          </div>
+                          <div className="border rounded-md p-3 bg-muted/30">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Result</span>
+                              {resultPreview.isLong && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setExpandedResults((prev) => ({ ...prev, [idKey]: !resultState }))}
+                                >
+                                  {resultState ? 'Show less' : 'Show more'}
+                                </Button>
+                              )}
+                            </div>
+                            <pre className="text-xs overflow-x-auto whitespace-pre-wrap font-mono leading-snug">{resultMessage ? resultPreview.display : 'No result'}</pre>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 ))}
               </div>
