@@ -34,6 +34,7 @@ import {
   IconServer,
   IconActivity,
   IconCalendar,
+  IconSearch,
 } from "@tabler/icons-react"
 import {
   ColumnDef,
@@ -45,6 +46,7 @@ import {
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   useReactTable,
 } from "@tanstack/react-table"
 import { z } from "zod"
@@ -68,6 +70,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import {
   Tabs,
 } from "@/components/ui/tabs"
@@ -524,6 +527,7 @@ export function WorkflowsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
+  const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState({
     pageIndex: page - 1, // API uses 1-based pagination, but table is 0-based
@@ -554,6 +558,13 @@ export function WorkflowsDataTable({
     setData(initialData)
   }, [initialData])
 
+  // Reset pagination to first page when search changes
+  React.useEffect(() => {
+    if (pagination.pageIndex !== 0) {
+      setPagination(prev => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [globalFilter, pagination.pageIndex])
+
   // Handle pagination changes
   const handlePaginationChange = React.useCallback((updater: ((old: typeof pagination) => typeof pagination) | typeof pagination) => {
     const newPagination = typeof updater === 'function' 
@@ -562,17 +573,19 @@ export function WorkflowsDataTable({
     
     setPagination(newPagination)
     
-    // Call callback to load new data only if page actually changed
-    const newPage = newPagination.pageIndex + 1
-    const newPageSize = newPagination.pageSize
-    
-    if (newPage !== page) {
-      onPageChange(newPage)
+    // Only call API callbacks when not searching (server-side pagination)
+    if (!globalFilter) {
+      const newPage = newPagination.pageIndex + 1
+      const newPageSize = newPagination.pageSize
+      
+      if (newPage !== page) {
+        onPageChange(newPage)
+      }
+      if (newPageSize !== limit) {
+        onPageSizeChange(newPageSize)
+      }
     }
-    if (newPageSize !== limit) {
-      onPageSizeChange(newPageSize)
-    }
-  }, [pagination, page, limit, onPageChange, onPageSizeChange])
+  }, [pagination, page, limit, onPageChange, onPageSizeChange, globalFilter])
 
   // Handle filter changes
   const handleFiltersChange = React.useCallback((updater: ((old: ColumnFiltersState) => ColumnFiltersState) | ColumnFiltersState) => {
@@ -590,6 +603,27 @@ export function WorkflowsDataTable({
     }
   }, [columnFilters, onFiltersChange, page, onPageChange])
 
+  // Calculate filtered data count for pagination
+  const filteredDataCount = React.useMemo(() => {
+    if (!globalFilter) return data.length
+    
+    const searchValue = globalFilter.toLowerCase().trim()
+    if (!searchValue) return data.length
+    
+    return data.filter((workflow) => {
+      // Search in ID
+      if (String(workflow.id).includes(searchValue)) return true
+      
+      // Search in name
+      const name = String(workflow.displayName || workflow.name || 'Unknown').toLowerCase()
+      if (name.includes(searchValue)) return true
+      
+      return false
+    }).length
+  }, [data, globalFilter])
+
+  const isAllSelected = limit >= total && total > 0
+
   const table = useReactTable({
     data,
     columns,
@@ -598,6 +632,7 @@ export function WorkflowsDataTable({
       columnVisibility,
       rowSelection,
       columnFilters,
+      globalFilter,
       pagination,
     },
     getRowId: (row) => row.id.toString(),
@@ -607,12 +642,33 @@ export function WorkflowsDataTable({
     onColumnFiltersChange: handleFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: handlePaginationChange,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    pageCount: Math.ceil(total / limit), // Use total count from API
-    manualPagination: true, // Indicate that pagination is controlled externally
-    manualFiltering: true, // Indicate that filtering is controlled externally
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, columnId, filterValue) => {
+      const workflow = row.original as Workflow
+      const searchValue = String(filterValue || '').toLowerCase().trim()
+      
+      if (!searchValue) return true
+      
+      // Search in ID
+      if (String(workflow.id).includes(searchValue)) return true
+      
+      // Search in name
+      const name = String(workflow.displayName || workflow.name || 'Unknown').toLowerCase()
+      if (name.includes(searchValue)) return true
+      
+      return false
+    },
+    pageCount: globalFilter 
+      ? Math.ceil(filteredDataCount / pagination.pageSize) 
+      : isAllSelected
+      ? 1 // When "All" is selected, show only one page
+      : Math.ceil(total / limit), // Use total count from API when no search
+    manualPagination: !globalFilter && !isAllSelected, // Use client-side pagination when searching or when "All" is selected
+    manualFiltering: false, // Enable client-side filtering for search
   })
 
   function handleDragEnd(event: DragEndEvent) {
@@ -631,7 +687,18 @@ export function WorkflowsDataTable({
       defaultValue="outline"
       className="w-full flex-col justify-start gap-6"
     >
-        <div className="overflow-hidden rounded-lg border">
+      <div className="flex items-center py-4">
+        <div className="relative flex-1 max-w-sm">
+          <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by ID or name..."
+            value={globalFilter ?? ""}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-lg border">
           <DndContext
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
@@ -693,14 +760,22 @@ export function WorkflowsDataTable({
                 Rows per page
               </Label>
               <Select
-                value={`${table.getState().pagination.pageSize}`}
+                value={isAllSelected ? 'all' : `${table.getState().pagination.pageSize}`}
                 onValueChange={(value) => {
-                  table.setPageSize(Number(value))
+                  if (value === 'all') {
+                    // Set page size to total for "All" option
+                    table.setPageSize(total)
+                    onPageSizeChange(total)
+                  } else {
+                    const pageSize = Number(value)
+                    table.setPageSize(pageSize)
+                    onPageSizeChange(pageSize)
+                  }
                 }}
               >
                 <SelectTrigger size="sm" className="w-20" id="rows-per-page">
                   <SelectValue
-                    placeholder={table.getState().pagination.pageSize}
+                    placeholder={isAllSelected ? 'All' : table.getState().pagination.pageSize}
                   />
                 </SelectTrigger>
                 <SelectContent side="top">
@@ -709,6 +784,11 @@ export function WorkflowsDataTable({
                       {pageSize}
                     </SelectItem>
                   ))}
+                  {total > 0 && (
+                    <SelectItem key="all" value="all">
+                      All ({total})
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -3,7 +3,9 @@ export const runtime = 'edge';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getExecutionById } from '@/lib/api/executions';
+import { getUserWorkflowByWorkflowId } from '@/lib/api/user-workflows';
 import { Execution } from '@/interface/Execution';
+import { UserWorkflow } from '@/interface/UserWorkflow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +20,8 @@ import {
   IconPlayerStop,
   IconCode,
   IconCurrencyDollar,
-  IconDatabase
+  IconDatabase,
+  IconExternalLink
 } from '@tabler/icons-react';
 import Link from 'next/link';
 
@@ -88,6 +91,7 @@ export default function ExecutionDetailPage() {
   const executionId = parseInt(params.id as string);
   
   const [execution, setExecution] = useState<Execution | null>(null);
+  const [userWorkflow, setUserWorkflow] = useState<UserWorkflow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +105,21 @@ export default function ExecutionDetailPage() {
         
         if (response.status === 200 && response.data) {
           setExecution(response.data);
+          
+          // Try to fetch user workflow if workflowInternalId exists
+          if (response.data.workflowInternalId) {
+            try {
+              const userWorkflowResponse = await getUserWorkflowByWorkflowId(
+                response.data.workflowInternalId
+              );
+              if (userWorkflowResponse.status === 200 && userWorkflowResponse.data) {
+                setUserWorkflow(userWorkflowResponse.data);
+              }
+            } catch (error) {
+              // Silently fail if user workflow not found
+              console.error('Error fetching user workflow:', error);
+            }
+          }
         } else {
           setError(response.message || 'Failed to load execution');
         }
@@ -162,11 +181,19 @@ export default function ExecutionDetailPage() {
             <div>
               <h1 className="text-3xl font-bold">Execution #{String(execution.id)}</h1>
               <p className="text-muted-foreground">
-                n8n ID: {execution.n8nId} • Workflow: {execution.workflow?.name || execution.workflowName || 'Unknown'}
+                n8n ID: {execution.n8nId} • Workflow: {execution.workflow?.name || execution.workflowName || 'Unknown'} • Instance: {execution.instance?.name || 'Unknown'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {userWorkflow && (
+              <Button variant="outline" asChild>
+                <Link href={`/users/${userWorkflow.userId}/workflows/${userWorkflow.id}`}>
+                  <IconExternalLink className="h-4 w-4 mr-2" />
+                  View Workflow
+                </Link>
+              </Button>
+            )}
             <Badge 
               variant={getStatusBadgeVariant(execution.status)}
               className="px-3 py-1"

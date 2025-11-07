@@ -32,11 +32,11 @@ export const useExecutionsStore = create<ExecutionsStore>((set, get) => ({
   error: null,
   total: 0,
   page: 1,
-  limit: 50,
+  limit: 10,
   totalPages: 0,
   filters: {},
 
-  fetchExecutions: async (page = 1, limit = 50, filters = {}) => {
+  fetchExecutions: async (page = 1, limit = 10, filters = {}) => {
     set({ isLoading: true, error: null });
 
     try {

@@ -158,6 +158,9 @@ export function ExecutionsDataTable({
     pageSize: limit,
   })
 
+  // Check if current limit equals total (All selected)
+  const isAllSelected = React.useMemo(() => limit >= total && total > 0, [limit, total])
+
   // Sync pagination with props
   React.useEffect(() => {
     setPagination({
@@ -578,12 +581,16 @@ export function ExecutionsDataTable({
       const newState = typeof updater === 'function' ? updater(pagination) : updater
       setPagination(newState)
       
-      // Call parent pagination handlers
-      if (onPageChange && newState.pageIndex !== pagination.pageIndex) {
-        onPageChange(newState.pageIndex + 1)
-      }
-      if (onPageSizeChange && newState.pageSize !== pagination.pageSize) {
-        onPageSizeChange(newState.pageSize)
+      // Only call API callbacks when not "All" selected (server-side pagination)
+      const isAll = newState.pageSize >= total && total > 0
+      if (!isAll) {
+        // Call parent pagination handlers
+        if (onPageChange && newState.pageIndex !== pagination.pageIndex) {
+          onPageChange(newState.pageIndex + 1)
+        }
+        if (onPageSizeChange && newState.pageSize !== pagination.pageSize) {
+          onPageSizeChange(newState.pageSize)
+        }
       }
     },
     state: {
@@ -594,8 +601,10 @@ export function ExecutionsDataTable({
       pagination,
       globalFilter,
     },
-    pageCount: Math.ceil(total / limit),
-    manualPagination: true,
+    pageCount: isAllSelected
+      ? 1 // When "All" is selected, show only one page
+      : Math.ceil(total / limit),
+    manualPagination: !isAllSelected, // Use client-side pagination when "All" is selected
     manualFiltering: false, // Enable client-side filtering for workflow search
   })
 
@@ -679,20 +688,37 @@ export function ExecutionsDataTable({
               Rows per page
             </Label>
             <Select
-              value={`${table.getState().pagination.pageSize}`}
+              value={isAllSelected ? 'all' : `${table.getState().pagination.pageSize}`}
               onValueChange={(value) => {
-                table.setPageSize(Number(value))
+                if (value === 'all') {
+                  // Set page size to total for "All" option
+                  table.setPageSize(total)
+                  if (onPageSizeChange) {
+                    onPageSizeChange(total)
+                  }
+                } else {
+                  const pageSize = Number(value)
+                  table.setPageSize(pageSize)
+                  if (onPageSizeChange) {
+                    onPageSizeChange(pageSize)
+                  }
+                }
               }}
             >
-              <SelectTrigger id="rows-per-page" className="h-8 w-[70px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectTrigger id="rows-per-page" className="h-8 w-[100px]">
+                <SelectValue placeholder={isAllSelected ? 'All' : table.getState().pagination.pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
+                {[100, 200, 300, 400, 500].map((pageSize) => (
                   <SelectItem key={pageSize} value={`${pageSize}`}>
                     {pageSize}
                   </SelectItem>
                 ))}
+                {total > 0 && (
+                  <SelectItem key="all" value="all">
+                    All ({total})
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

@@ -52,8 +52,8 @@ export default function ExecutionsPage() {
   }, [filters])
 
   useEffect(() => {
-    // Load more data for client-side search (100 records)
-    fetchExecutions(1, 100, currentFilters)
+    // Load data with default limit of 10
+    fetchExecutions(1, 10, currentFilters)
   }, [fetchExecutions, currentFilters])
 
   const successCount = executions.filter(e => e.status === 'success').length
