@@ -19,7 +19,7 @@ import Link from "next/link"
 export default function UserWorkflowsOverviewPage() {
   const searchParams = useSearchParams();
   const { user } = useUserStore()
-  const { users, fetchUsers, isLoading: usersLoading, error: usersError, total: usersTotal, page: usersPage, limit: usersLimit, search: usersSearch, setSearch: setUsersSearch } = useUsersStore()
+  const { users, fetchUsers, isLoading: usersLoading, error: usersError, total: usersTotal, page: usersPage, limit: usersLimit, setSearch: setUsersSearch } = useUsersStore()
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const { 
