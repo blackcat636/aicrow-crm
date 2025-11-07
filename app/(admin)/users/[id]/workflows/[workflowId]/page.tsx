@@ -101,7 +101,7 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
       }
     }
     loadData()
-  }, [userId, workflowId])
+  }, [userId, workflowId, fetchUserWorkflows])
 
   // Update form when workflow is loaded
   useEffect(() => {
@@ -584,12 +584,13 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                         return { display: text.slice(0, maxChars) + '...', isLong }
                       }
 
-                      let inputText = toPretty(inputRaw)
-                      let resultMessage =
-                        (resultRaw && typeof resultRaw === 'object' && (resultRaw as any).massager != null)
-                          ? String((resultRaw as any).massager)
-                          : (resultRaw && typeof resultRaw === 'object' && (resultRaw as any).message != null)
-                            ? String((resultRaw as any).message)
+                      const inputText = toPretty(inputRaw)
+                      const resultRawObj = resultRaw && typeof resultRaw === 'object' ? resultRaw as Record<string, unknown> : null
+                      const resultMessage =
+                        (resultRawObj && 'massager' in resultRawObj && resultRawObj.massager != null)
+                          ? String(resultRawObj.massager)
+                          : (resultRawObj && 'message' in resultRawObj && resultRawObj.message != null)
+                            ? String(resultRawObj.message)
                             : (resultRaw ? toPretty(resultRaw) : '')
 
                       // No mocked Input Data — if empty, UI will show 'No input'
