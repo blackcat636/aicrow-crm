@@ -8,17 +8,34 @@ const API_URL = (
 
 export async function getAllUsers(
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
+  search?: string
 ): Promise<UsersApiResponse> {
-  const url = `${API_URL}/admin/users?page=${page}&limit=${limit}`;
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString()
+  });
+  
+  if (search && search.trim()) {
+    params.append('search', search.trim());
+  }
+  
+  const url = `${API_URL}/admin/users?${params}`;
 
   try {
     const response = await fetchWithAuth(url);
+    const rawData = await response.json();
 
     if (!response.ok) {
-      throw new Error('Failed to fetch users');
+      return {
+        status: response.status,
+        message: rawData.message || 'Failed to fetch users',
+        data: [],
+        total: 0,
+        page: 0,
+        limit: 0
+      };
     }
-    const rawData = await response.json();
 
     // Handle both response formats:
     // Format 1: { status: 200, data: [...], total, page, limit }
@@ -44,13 +61,20 @@ export async function getAllUsers(
     if (data.status === 200 || data.status === 0) {
       return data;
     } else {
-      throw new Error(data.message || 'Failed to fetch users');
+      return {
+        status: data.status || 500,
+        message: data.message || 'Failed to fetch users',
+        data: [],
+        total: 0,
+        page: 0,
+        limit: 0
+      };
     }
   } catch (error) {
     console.error('Error fetching users:', error);
     return {
       status: 0,
-      message: 'Network error',
+      message: error instanceof Error ? error.message : 'Network error',
       data: [],
       total: 0,
       page: 0,

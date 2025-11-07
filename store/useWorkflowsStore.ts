@@ -22,9 +22,19 @@ export const useWorkflowsStore = create<WorkflowsStore>((set) => ({
   limit: 10,
 
   fetchWorkflows: async (page = 1, limit = 10) => {
+    // Enforce API limit of 100
+    const validLimit = Math.min(limit, 100);
+    if (limit > 100) {
+      set({ 
+        error: 'Limit cannot exceed 100. Maximum limit is 100.',
+        isLoading: false 
+      });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const response = await getAllWorkflows(page, limit);
+      const response = await getAllWorkflows(page, validLimit);
 
       if ((response.status === 0 || response.status === 200) && response.data) {
         set({

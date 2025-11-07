@@ -41,7 +41,17 @@ export async function getAllExecutions(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch executions');
+      return {
+        status: response.status,
+        message: data.message || 'Failed to fetch executions',
+        data: {
+          items: [],
+          total: 0,
+          page: 1,
+          limit: 50,
+          totalPages: 0
+        }
+      };
     }
 
     return {

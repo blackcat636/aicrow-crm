@@ -10,15 +10,16 @@ import { useUsersStore } from "@/store/useUsersStore"
 import { UserWorkflowsDataTable } from "@/components/user-workflows/user-workflows-data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { IconPlus, IconSettings, IconActivity, IconCircleCheckFilled, IconUsers, IconSearch } from "@tabler/icons-react"
+import { IconPlus, IconSettings, IconActivity, IconCircleCheckFilled, IconUsers, IconSearch, IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 
 export default function UserWorkflowsOverviewPage() {
   const searchParams = useSearchParams();
   const { user } = useUserStore()
-  const { users, fetchUsers, isLoading: usersLoading, error: usersError } = useUsersStore()
+  const { users, fetchUsers, isLoading: usersLoading, error: usersError, total: usersTotal, page: usersPage, limit: usersLimit, search: usersSearch, setSearch: setUsersSearch } = useUsersStore()
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const { 
@@ -32,13 +33,6 @@ export default function UserWorkflowsOverviewPage() {
 
   // Check if user is admin
   const isAdmin = user?.role === 'admin'
-
-  // Load users list for admin
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers(1, 100); // Load up to 100 users for selection
-    }
-  }, [isAdmin, fetchUsers]);
 
   // Auto-select user from URL query parameter or current user for non-admin
   useEffect(() => {
@@ -60,6 +54,33 @@ export default function UserWorkflowsOverviewPage() {
     }
   }, [selectedUserId, fetchUserWorkflows]);
 
+  // Initial load for admin
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers(1, 25);
+    }
+  }, [isAdmin, fetchUsers]);
+
+  // Use debounced search to avoid too many API calls
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    const timer = setTimeout(() => {
+      setUsersSearch(searchQuery);
+      // If search is active, load more users (up to 100) for client-side filtering
+      // If search is empty, reset to normal pagination
+      if (searchQuery.trim()) {
+        // Load maximum users for better search results
+        fetchUsers(1, 100, searchQuery);
+      } else {
+        // Reset to normal pagination
+        fetchUsers(1, 25);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isAdmin, fetchUsers, setUsersSearch]);
+
   const handlePageChange = (newPage: number) => {
     if (selectedUserId) {
       fetchUserWorkflows(selectedUserId, newPage, limit);
@@ -76,13 +97,24 @@ export default function UserWorkflowsOverviewPage() {
     // Intentionally left blank: parent handles fetching via effects and store
   };
 
-  // Filter users by search query
-  const filteredUsers = users.filter(u => 
-    u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const handleUsersPageChange = (newPage: number) => {
+    fetchUsers(newPage, usersLimit, searchQuery);
+  };
+
+  const handleUsersPageSizeChange = (newPageSize: number) => {
+    fetchUsers(1, newPageSize, searchQuery);
+  };
+
+  // If search is active, try server-side search first, fallback to client-side
+  // For now, use client-side filtering if API doesn't support search
+  const displayedUsers = searchQuery.trim() 
+    ? users.filter(u => 
+        u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : users
 
   // Calculate statistics
   const activeWorkflows = userWorkflows?.filter(w => w.isActive).length || 0
@@ -106,7 +138,11 @@ export default function UserWorkflowsOverviewPage() {
               {isAdmin ? 'User Workflows Management' : 'My Workflows'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isAdmin ? 'Manage user workflows' : 'Your personal automations'}
+              {selectedUserId ? (
+                <>Page {page} of {Math.ceil(total / limit)} • Total: {total} workflows</>
+              ) : (
+                <>{isAdmin ? 'Manage user workflows' : 'Your personal automations'}</>
+              )}
             </p>
           </div>
           {selectedUserId && (
@@ -146,18 +182,22 @@ export default function UserWorkflowsOverviewPage() {
                 {usersError && (
                   <p className="text-xs text-red-500 mt-1">Error: {usersError}</p>
                 )}
-                {!usersLoading && !usersError && users.length > 0 && (
+                {!usersLoading && !usersError && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Found {filteredUsers.length} of {users.length} users
+                    {searchQuery.trim() ? (
+                      <>Found {displayedUsers.length} of {users.length} users</>
+                    ) : (
+                      <>Page {usersPage} of {Math.ceil(usersTotal / usersLimit)} • Total: {usersTotal} users</>
+                    )}
                   </p>
                 )}
               </div>
               {/* Quick user selection cards */}
-              {!selectedUserId && filteredUsers.length > 0 && (
+              {!selectedUserId && displayedUsers.length > 0 && (
                 <div>
                   <Label className="mb-2 block">Select User:</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto p-1">
-                    {filteredUsers.map((u) => (
+                    {displayedUsers.map((u) => (
                       <button
                         key={u.id}
                         onClick={() => setSelectedUserId(u.id)}
@@ -184,6 +224,134 @@ export default function UserWorkflowsOverviewPage() {
                       </button>
                     ))}
                   </div>
+                  
+                  {/* Pagination Controls - hide when searching */}
+                  {!selectedUserId && usersTotal > 0 && !searchQuery.trim() && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="users-rows-per-page" className="text-sm font-medium">
+                          Rows per page
+                        </Label>
+                        <Select
+                          value={`${usersLimit}`}
+                          onValueChange={(value) => {
+                            const pageSize = Number(value)
+                            const validPageSize = Math.min(pageSize, 100)
+                            handleUsersPageSizeChange(validPageSize)
+                          }}
+                        >
+                          <SelectTrigger size="sm" className="w-20" id="users-rows-per-page">
+                            <SelectValue placeholder={usersLimit} />
+                          </SelectTrigger>
+                          <SelectContent side="top">
+                            {[10, 25, 50, 100].map((pageSize) => (
+                              <SelectItem key={pageSize} value={`${pageSize}`}>
+                                {pageSize}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex w-fit items-center justify-center text-sm font-medium">
+                        Page {usersPage} of {Math.ceil(usersTotal / usersLimit)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUsersPageChange(1)}
+                          disabled={usersPage === 1 || usersLoading}
+                        >
+                          <IconChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUsersPageChange(usersPage - 1)}
+                          disabled={usersPage === 1 || usersLoading}
+                        >
+                          <IconChevronLeft className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Page number buttons */}
+                        {(() => {
+                          const pageCount = Math.ceil(usersTotal / usersLimit)
+                          const currentPage = usersPage
+                          const maxVisible = 7
+                          const pages: (number | string)[] = []
+                          
+                          if (pageCount <= maxVisible) {
+                            // Show all pages
+                            for (let i = 1; i <= pageCount; i++) {
+                              pages.push(i)
+                            }
+                          } else {
+                            // Show first page
+                            if (currentPage <= 3) {
+                              for (let i = 1; i <= 5; i++) {
+                                pages.push(i)
+                              }
+                              pages.push('...')
+                              pages.push(pageCount)
+                            }
+                            // Show middle pages
+                            else if (currentPage >= pageCount - 2) {
+                              pages.push(1)
+                              pages.push('...')
+                              for (let i = pageCount - 4; i <= pageCount; i++) {
+                                pages.push(i)
+                              }
+                            }
+                            // Show around current
+                            else {
+                              pages.push(1)
+                              pages.push('...')
+                              for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                                pages.push(i)
+                              }
+                              pages.push('...')
+                              pages.push(pageCount)
+                            }
+                          }
+                          
+                          return pages.map((page, idx) => (
+                            page === '...' ? (
+                              <span key={`ellipsis-${idx}`} className="px-2">
+                                ...
+                              </span>
+                            ) : (
+                              <Button
+                                key={page}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleUsersPageChange(page as number)}
+                                disabled={usersLoading}
+                              >
+                                {page}
+                              </Button>
+                            )
+                          ))
+                        })()}
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUsersPageChange(usersPage + 1)}
+                          disabled={usersPage >= Math.ceil(usersTotal / usersLimit) || usersLoading}
+                        >
+                          <IconChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUsersPageChange(Math.ceil(usersTotal / usersLimit))}
+                          disabled={usersPage >= Math.ceil(usersTotal / usersLimit) || usersLoading}
+                        >
+                          <IconChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

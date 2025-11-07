@@ -37,10 +37,20 @@ export const useExecutionsStore = create<ExecutionsStore>((set, get) => ({
   filters: {},
 
   fetchExecutions: async (page = 1, limit = 10, filters = {}) => {
+    // Enforce API limit of 100
+    const validLimit = Math.min(limit, 100);
+    if (limit > 100) {
+      set({ 
+        error: 'Limit cannot exceed 100. Maximum limit is 100.',
+        isLoading: false 
+      });
+      return;
+    }
+
     set({ isLoading: true, error: null });
 
     try {
-      const response = await getAllExecutions(page, limit, filters);
+      const response = await getAllExecutions(page, validLimit, filters);
 
       if (response.status === 200) {
         set({
@@ -53,7 +63,7 @@ export const useExecutionsStore = create<ExecutionsStore>((set, get) => ({
         });
       } else {
         set({
-          error: response.message,
+          error: response.message || 'Failed to fetch executions',
           isLoading: false
         });
       }

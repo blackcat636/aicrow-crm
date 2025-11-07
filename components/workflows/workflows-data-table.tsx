@@ -762,15 +762,11 @@ export function WorkflowsDataTable({
               <Select
                 value={isAllSelected ? 'all' : `${table.getState().pagination.pageSize}`}
                 onValueChange={(value) => {
-                  if (value === 'all') {
-                    // Set page size to total for "All" option
-                    table.setPageSize(total)
-                    onPageSizeChange(total)
-                  } else {
-                    const pageSize = Number(value)
-                    table.setPageSize(pageSize)
-                    onPageSizeChange(pageSize)
-                  }
+                  const pageSize = Number(value)
+                  // Ensure page size doesn't exceed API limit of 100
+                  const validPageSize = Math.min(pageSize, 100)
+                  table.setPageSize(validPageSize)
+                  onPageSizeChange(validPageSize)
                 }}
               >
                 <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -779,16 +775,11 @@ export function WorkflowsDataTable({
                   />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[10, 20, 30, 40, 50].map((pageSize) => (
+                  {[10, 25, 50, 100].map((pageSize) => (
                     <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>
                   ))}
-                  {total > 0 && (
-                    <SelectItem key="all" value="all">
-                      All ({total})
-                    </SelectItem>
-                  )}
                 </SelectContent>
               </Select>
             </div>

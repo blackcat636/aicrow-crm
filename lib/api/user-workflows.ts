@@ -99,17 +99,36 @@ export async function getUserWorkflows(
 
   try {
     const response = await fetchWithAuth(url);
+    const data = (await response.json()) as UserWorkflowsApiResponse;
 
     if (!response.ok) {
-      throw new Error('Failed to fetch user workflows');
+      return {
+        status: response.status,
+        message: data.message || 'Failed to fetch user workflows',
+        data: {
+          items: [],
+          total: 0,
+          page: 0,
+          limit: 0,
+          totalPages: 0
+        }
+      };
     }
-
-    const data = (await response.json()) as UserWorkflowsApiResponse;
 
     if (data.status === 200 || data.status === 0) {
       return data;
     } else {
-      throw new Error(data.message || 'Failed to fetch user workflows');
+      return {
+        status: data.status || 500,
+        message: data.message || 'Failed to fetch user workflows',
+        data: {
+          items: [],
+          total: 0,
+          page: 0,
+          limit: 0,
+          totalPages: 0
+        }
+      };
     }
   } catch (error) {
     return {

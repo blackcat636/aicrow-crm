@@ -157,6 +157,8 @@ export function ExecutionsDataTable({
     pageIndex: page - 1,
     pageSize: limit,
   })
+  const [customPageSize, setCustomPageSize] = React.useState<string>('')
+  const [showCustomInput, setShowCustomInput] = React.useState(false)
 
   // Check if current limit equals total (All selected)
   const isAllSelected = React.useMemo(() => limit >= total && total > 0, [limit, total])
@@ -687,40 +689,94 @@ export function ExecutionsDataTable({
             <Label htmlFor="rows-per-page" className="text-sm font-medium hidden lg:block">
               Rows per page
             </Label>
-            <Select
-              value={isAllSelected ? 'all' : `${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                if (value === 'all') {
-                  // Set page size to total for "All" option
-                  table.setPageSize(total)
-                  if (onPageSizeChange) {
-                    onPageSizeChange(total)
+            {showCustomInput ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  placeholder="Max: 100"
+                  value={customPageSize}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = Number(value)
+                    if (value === '' || (numValue > 0 && numValue <= 100)) {
+                      setCustomPageSize(value)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const pageSize = Number(customPageSize)
+                      if (pageSize > 0 && pageSize <= 100) {
+                        table.setPageSize(pageSize)
+                        if (onPageSizeChange) {
+                          onPageSizeChange(pageSize)
+                        }
+                        setShowCustomInput(false)
+                        setCustomPageSize('')
+                      }
+                    } else if (e.key === 'Escape') {
+                      setShowCustomInput(false)
+                      setCustomPageSize('')
+                    }
+                  }}
+                  onBlur={() => {
+                    const pageSize = Number(customPageSize)
+                    if (pageSize > 0 && pageSize <= 100) {
+                      table.setPageSize(pageSize)
+                      if (onPageSizeChange) {
+                        onPageSizeChange(pageSize)
+                      }
+                    }
+                    setShowCustomInput(false)
+                    setCustomPageSize('')
+                  }}
+                  className="h-8 w-[100px]"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <Select
+                value={isAllSelected ? 'all' : `${table.getState().pagination.pageSize}`}
+                onValueChange={(value) => {
+                  if (value === 'all') {
+                    // Set page size to total for "All" option, but cap at API limit of 100
+                    const maxPageSize = Math.min(total, 100)
+                    table.setPageSize(maxPageSize)
+                    if (onPageSizeChange) {
+                      onPageSizeChange(maxPageSize)
+                    }
+                  } else if (value === 'custom') {
+                    // Handled by onSelect in SelectItem
+                    return
+                  } else {
+                    const pageSize = Number(value)
+                    // Ensure page size doesn't exceed API limit of 100
+                    const validPageSize = Math.min(pageSize, 100)
+                    table.setPageSize(validPageSize)
+                    if (onPageSizeChange) {
+                      onPageSizeChange(validPageSize)
+                    }
                   }
-                } else {
-                  const pageSize = Number(value)
-                  table.setPageSize(pageSize)
-                  if (onPageSizeChange) {
-                    onPageSizeChange(pageSize)
-                  }
-                }
-              }}
-            >
-              <SelectTrigger id="rows-per-page" className="h-8 w-[100px]">
-                <SelectValue placeholder={isAllSelected ? 'All' : table.getState().pagination.pageSize} />
-              </SelectTrigger>
+                }}
+              >
+                <SelectTrigger id="rows-per-page" className="h-8 w-[100px]">
+                  <SelectValue placeholder={isAllSelected ? 'All' : table.getState().pagination.pageSize} />
+                </SelectTrigger>
               <SelectContent side="top">
-                {[100, 200, 300, 400, 500].map((pageSize) => (
+                {[10, 25, 50, 100].map((pageSize) => (
                   <SelectItem key={pageSize} value={`${pageSize}`}>
                     {pageSize}
                   </SelectItem>
                 ))}
-                {total > 0 && (
+                {total > 0 && total <= 100 && (
                   <SelectItem key="all" value="all">
                     All ({total})
                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
+            )}
           </div>
           <div className="flex items-center gap-2">
           <Button

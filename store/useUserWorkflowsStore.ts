@@ -55,9 +55,19 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
   },
 
   fetchUserWorkflows: async (userId: number, page = 1, limit = 10) => {
+    // Enforce API limit of 100
+    const validLimit = Math.min(limit, 100);
+    if (limit > 100) {
+      set({ 
+        error: 'Limit cannot exceed 100. Maximum limit is 100.',
+        isLoading: false 
+      });
+      return;
+    }
+
     set({ isLoading: true, error: null, currentUserId: userId });
     try {
-      const response = await getUserWorkflows(userId, page, limit);
+      const response = await getUserWorkflows(userId, page, validLimit);
 
       if ((response.status === 0 || response.status === 200) && response.data) {
         // Handle different response formats
@@ -70,8 +80,8 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
           : (response.data as { total: number }).total || 0;
         const currentPage = isArrayResponse ? page : response.data.page || page;
         const pageLimit = isArrayResponse
-          ? limit
-          : response.data.limit || limit;
+          ? validLimit
+          : response.data.limit || validLimit;
 
         set({
           userWorkflows: workflows,
@@ -84,6 +94,7 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
       }
     } catch (error) {
       console.error('Error loading user workflows:', error);
+      set({ error: 'Error loading user workflows' });
     } finally {
       set({ isLoading: false });
     }
