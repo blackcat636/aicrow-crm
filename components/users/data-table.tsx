@@ -33,6 +33,12 @@ import {
   IconMail,
   IconPhone,
   IconUser,
+  IconDotsVertical,
+  IconEye,
+  IconEdit,
+  IconTrash,
+  IconToggleLeft,
+  IconToggleRight,
 } from "@tabler/icons-react"
 import {
   ColumnDef,
@@ -73,8 +79,182 @@ import {
 import {
   Tabs,
 } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { User } from "@/interface/User"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { 
+  deleteUser,
+  updateUserStatus,
+} from "@/lib/api/users"
+import { useUsersStore } from "@/store/useUsersStore"
+import { useState } from "react"
+import { IconAlertTriangle } from "@tabler/icons-react"
+import { toast } from "sonner"
+
+// User Actions Component
+function UserActions({ user }: { user: User }) {
+  const router = useRouter();
+  const { fetchUsers, page, limit } = useUsersStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const handleView = () => {
+    router.push(`/users/${user.id}`);
+  };
+
+  const handleEdit = () => {
+    router.push(`/users/${user.id}?edit=true`);
+  };
+
+  const handleDeleteClick = () => {
+    setDropdownOpen(false);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      setIsLoading(true);
+      setShowDeleteDialog(false);
+      await deleteUser(user.id);
+      // Small delay to ensure dialog closes before refreshing
+      setTimeout(async () => {
+        await fetchUsers(page, limit);
+        toast.success('User deleted successfully');
+      }, 100);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+
+
+  const handleToggleStatus = async () => {
+    setDropdownOpen(false);
+    try {
+      setIsLoading(true);
+      await updateUserStatus(user.id, !(user.isActive !== false));
+      await fetchUsers(page, limit);
+      toast.success(`User ${user.isActive !== false ? 'blocked' : 'activated'} successfully`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update user status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isActive = user.isActive !== false; // Default to true if not specified
+
+  return (
+    <>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+            size="icon"
+            disabled={isLoading}
+          >
+            <IconDotsVertical />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handleView}>
+            <IconEye className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleEdit}>
+            <IconEdit className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleToggleStatus}>
+            {isActive ? (
+              <>
+                <IconToggleLeft className="mr-2 h-4 w-4" />
+                Block User
+              </>
+            ) : (
+              <>
+                <IconToggleRight className="mr-2 h-4 w-4" />
+                Activate User
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={handleDeleteClick}
+            className="text-red-600 focus:text-red-600"
+          >
+            <IconTrash className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+              <IconAlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <AlertDialogTitle className="text-xl font-semibold text-center">
+              Delete User?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              This action cannot be undone. This will permanently delete the user
+              <span className="block mt-2 font-medium text-foreground">
+                &quot;{user.username || user.email}&quot;
+              </span>
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={isLoading} className="w-full sm:w-auto">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isLoading}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            >
+              <IconTrash className="mr-2 h-4 w-4" />
+              {isLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+    </>
+  );
+}
 
 export const schema = z.object({
   id: z.number(),
@@ -186,12 +366,31 @@ const columns: ColumnDef<User>[] = [
         </Button>
       )
     },
-    cell: ({ row }) => (
-      <div className="w-32 flex items-center gap-2">
-        <IconUser className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{row.original.username}</span>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const username = row.original.username || '';
+      const maxLength = 20; // Maximum characters before truncation
+      const truncated = username.length > maxLength 
+        ? username.substring(0, maxLength) + '...' 
+        : username;
+
+      return (
+        <div className="w-32 flex items-center gap-2">
+          <IconUser className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          {username.length > maxLength ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="font-medium truncate cursor-help">{truncated}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{username}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="font-medium">{username || 'N/A'}</span>
+          )}
+        </div>
+      );
+    },
     enableHiding: false,
   },
   {
@@ -214,12 +413,31 @@ const columns: ColumnDef<User>[] = [
         </Button>
       )
     },
-    cell: ({ row }) => (
-      <div className="w-48 flex items-center gap-2">
-        <IconMail className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">{row.original.email}</span>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const email = row.original.email || '';
+      const maxLength = 25; // Maximum characters before truncation
+      const truncated = email.length > maxLength 
+        ? email.substring(0, maxLength) + '...' 
+        : email;
+
+      return (
+        <div className="w-48 flex items-center gap-2">
+          <IconMail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          {email.length > maxLength ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm text-muted-foreground truncate cursor-help">{truncated}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{email}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="text-sm text-muted-foreground">{email || 'N/A'}</span>
+          )}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "firstName",
@@ -363,6 +581,48 @@ const columns: ColumnDef<User>[] = [
     ),
   },
   {
+    accessorKey: "isActive",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 px-2 lg:px-3"
+        >
+          Status
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <IconArrowsUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const isActive = row.original.isActive !== false; // Default to true if not specified
+      return (
+        <Badge 
+          variant={isActive ? "default" : "outline"} 
+          className={isActive ? "bg-green-500 hover:bg-green-600 text-white" : "text-muted-foreground px-1.5"}
+        >
+          {isActive ? (
+            <>
+              <IconCircleCheckFilled className="fill-white dark:fill-white mr-1 h-3 w-3" />
+              Active
+            </>
+          ) : (
+            <>
+              <IconCircleCheckFilled className="fill-red-500 dark:fill-red-400 mr-1 h-3 w-3" />
+              Blocked
+            </>
+          )}
+        </Badge>
+      );
+    },
+  },
+  {
     accessorKey: "createdAt",
     header: ({ column }) => {
       return (
@@ -390,31 +650,11 @@ const columns: ColumnDef<User>[] = [
       </div>
     ),
   },
-  // {
-  //   id: "actions",
-  //   cell: () => (
-  //     <DropdownMenu>
-  //       <DropdownMenuTrigger asChild>
-  //         <Button
-  //           variant="ghost"
-  //           className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-  //           size="icon"
-  //         >
-  //           <IconDotsVertical />
-  //           <span className="sr-only">Open menu</span>
-  //         </Button>
-  //       </DropdownMenuTrigger>
-  //       <DropdownMenuContent align="end" className="w-32">
-  //         <DropdownMenuItem>Edit</DropdownMenuItem>
-  //         <DropdownMenuItem>Copy</DropdownMenuItem>
-  //         <DropdownMenuItem>Favorite</DropdownMenuItem>
-  //         <DropdownMenuSeparator />
-  //         <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-  //       </DropdownMenuContent>
-  //     </DropdownMenu>
-  //   ),
-  //   enableSorting: false,
-  // },
+  {
+    id: "actions",
+    cell: ({ row }) => <UserActions user={row.original} />,
+    enableSorting: false,
+  },
 ]
 
 function DraggableRow({ row }: { row: Row<User> }) {
@@ -539,7 +779,7 @@ export function DataTable({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    pageCount: Math.ceil(total / limit), // Use total count from API
+    pageCount: total > 0 && limit > 0 ? Math.ceil(total / limit) : 1, // Use total count from API
     manualPagination: true, // Indicate that pagination is controlled externally
   })
 
@@ -559,7 +799,7 @@ export function DataTable({
       defaultValue="outline"
       className="w-full flex-col justify-start gap-6"
     >
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           <DndContext
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}

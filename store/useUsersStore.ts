@@ -24,13 +24,15 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   limit: 10,
   search: '',
 
-  fetchUsers: async (page = 1, limit = 10, search?: string) => {
-    // Use search from state if not provided
+  fetchUsers: async (page?: number, limit?: number, search?: string) => {
+    // Use current state as defaults if params not provided
+    const currentPage = page ?? get().page;
+    const currentLimit = limit ?? get().limit;
     const searchQuery = search !== undefined ? search : get().search;
-    
+
     // Enforce API limit of 100
-    const validLimit = Math.min(limit, 100);
-    if (limit > 100) {
+    const validLimit = Math.min(currentLimit, 100);
+    if (currentLimit > 100) {
       set({ 
         error: 'Limit cannot exceed 100. Maximum limit is 100.',
         isLoading: false 
@@ -40,14 +42,14 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const response = await getAllUsers(page, validLimit, searchQuery);
+      const response = await getAllUsers(currentPage, validLimit, searchQuery);
 
       if ((response.status === 0 || response.status === 200) && response.data) {
         set({
           users: response.data,
           total: response.total,
-          page: response.page,
-          limit: response.limit,
+          page: response.page || currentPage,
+          limit: response.limit || validLimit,
           search: searchQuery
         });
       } else {

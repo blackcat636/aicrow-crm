@@ -43,8 +43,7 @@ export default function ExecutionsPage() {
     } else {
       setCurrentFilters(filters)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowId])
+  }, [workflowId, filters, setFilters])
 
   useEffect(() => {
     // Keep local filters in sync with store changes (without re-applying setFilters)

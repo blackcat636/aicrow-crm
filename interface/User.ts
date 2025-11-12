@@ -10,6 +10,7 @@ export interface User {
   balance: string;
   frozenBalance: string;
   isEmailVerified: boolean;
+  isActive?: boolean;
   referralCode: string | null;
   referredByCode: string | null;
   createdAt: string;
@@ -19,6 +20,10 @@ export interface User {
 export interface UserDetail extends User {
   photo: string | null;
   dateOfBirth: string | null;
+  timezone: string | null;
+  status?: string;
+  childrenCount?: number;
+  totalChildrenCount?: number;
 }
 
 export interface UserProfile {

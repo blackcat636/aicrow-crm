@@ -5,6 +5,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
+import { Toaster } from "@/components/ui/sonner"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
 
@@ -26,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   )
 }
