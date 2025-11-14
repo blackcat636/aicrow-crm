@@ -69,6 +69,11 @@ const ACTIVE_MODULES = [
         title: 'Admin Deposit',
         url: '/balance/admin-deposit',
         icon: 'IconCoins'
+      },
+      {
+        title: 'Users with Balances',
+        url: '/balance/users',
+        icon: 'IconUsers'
       }
     ]
   },

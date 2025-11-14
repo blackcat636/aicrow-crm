@@ -1,6 +1,6 @@
 "use client"
 export const runtime = 'edge';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/users/data-table"
 import { useUsersStore } from "@/store/useUsersStore"
@@ -11,57 +11,121 @@ import { CreateUserDialog } from "@/components/users/create-user-dialog"
 export default function Page() { 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { users, isLoading, error, total, page, limit, fetchUsers, search, setSearch } = useUsersStore()
+  const { users, isLoading, error, total, page, limit, fetchUsers, search } = useUsersStore()
   const [searchQuery, setSearchQuery] = useState(search || '');
+  const previousUrlRef = useRef<string>('');
+  const isInitializedRef = useRef(false);
 
-  // Initial load and URL sync - fetch data on mount and when URL changes
+  // Initialize URL with page and limit if not present
   useEffect(() => {
+    if (!isInitializedRef.current) {
+      const urlPage = searchParams.get('page');
+      const urlLimit = searchParams.get('limit');
+      
+      // If page or limit are missing, add them to URL
+      if (!urlPage || !urlLimit) {
+        const params = new URLSearchParams();
+        params.set('page', urlPage || '1');
+        params.set('limit', urlLimit || '10');
+        const urlSearch = searchParams.get('search');
+        if (urlSearch) params.set('search', urlSearch);
+        
+        const newUrl = `?${params.toString()}`;
+        router.replace(`/users${newUrl}`, { scroll: false });
+        isInitializedRef.current = true;
+        return;
+      }
+      isInitializedRef.current = true;
+    }
+  }, [searchParams, router]);
+
+  // Sync URL → Store: Fetch data when URL changes
+  useEffect(() => {
+    if (!isInitializedRef.current) {
+      return; // Wait for initialization
+    }
+
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
     const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
     const urlSearch = searchParams.get('search') || '';
+    
+    // Create URL string for comparison
+    const currentUrl = `page=${urlPage}&limit=${urlLimit}&search=${urlSearch}`;
+    
+    // Only fetch if URL actually changed
+    if (previousUrlRef.current !== currentUrl) {
+      previousUrlRef.current = currentUrl;
+      
+      // Update local search query from URL
+      if (urlSearch !== searchQuery) {
+        setSearchQuery(urlSearch);
+      }
 
-    // Fetch if URL params differ from store, or if users array is empty (initial load)
-    if (urlPage !== page || urlLimit !== limit || urlSearch !== search || users.length === 0) {
+      // Fetch data from URL params
       fetchUsers(urlPage, urlLimit, urlSearch);
     }
-  }, [searchParams, page, limit, search, users.length, fetchUsers]); // Run when URL params change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]); // Only react to URL changes - intentionally not including other deps to avoid loops
 
-  // Update URL when page/limit/search changes (but not from URL read)
-  useEffect(() => {
-    const urlPage = parseInt(searchParams.get('page') || '1', 10);
-    const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
-    const urlSearch = searchParams.get('search') || '';
-
-    // Only update URL if store values differ from URL (to avoid loops)
-    if (page !== urlPage || limit !== urlLimit || search !== urlSearch) {
-      const params = new URLSearchParams();
-      if (page > 1) params.set('page', page.toString());
-      if (limit !== 10) params.set('limit', limit.toString());
-      if (search) params.set('search', search);
-
-      const newUrl = params.toString() ? `?${params.toString()}` : '';
-      router.replace(`/users${newUrl}`, { scroll: false });
-    }
-  }, [page, limit, search, router, searchParams]);
-
-  // Debounced search
+  // Debounced search - update URL when search query changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery !== search) {
-        setSearch(searchQuery);
-        fetchUsers(1, limit, searchQuery); // Reset to page 1 when searching
+      const urlSearch = searchParams.get('search') || '';
+      if (searchQuery === urlSearch) {
+        return; // No change needed
       }
+
+      const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
+      
+      const params = new URLSearchParams();
+      params.set('page', '1'); // Reset to page 1 when searching
+      params.set('limit', urlLimit.toString()); // Always include limit
+      if (searchQuery) params.set('search', searchQuery);
+
+      const newUrl = `?${params.toString()}`;
+      router.replace(`/users${newUrl}`, { scroll: false });
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
-  }, [searchQuery, limit, fetchUsers, setSearch, search]);
+  }, [searchQuery, router, searchParams]);
 
   const handlePageChange = (newPage: number) => {
-    fetchUsers(newPage, limit, searchQuery);
+    const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
+    const urlSearch = searchParams.get('search') || '';
+    
+    // Update previousUrlRef immediately to prevent duplicate fetches
+    const newUrlString = `page=${newPage}&limit=${urlLimit}&search=${urlSearch}`;
+    previousUrlRef.current = newUrlString;
+    
+    const params = new URLSearchParams();
+    params.set('page', newPage.toString()); // Always include page
+    params.set('limit', urlLimit.toString()); // Always include limit
+    if (urlSearch) params.set('search', urlSearch);
+
+    const newUrl = `?${params.toString()}`;
+    router.replace(`/users${newUrl}`, { scroll: false });
+    
+    // Fetch immediately to update data
+    fetchUsers(newPage, urlLimit, urlSearch);
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    fetchUsers(1, newPageSize, searchQuery); // Return to first page when changing size
+    const urlSearch = searchParams.get('search') || '';
+    
+    // Update previousUrlRef immediately to prevent duplicate fetches
+    const newUrlString = `page=1&limit=${newPageSize}&search=${urlSearch}`;
+    previousUrlRef.current = newUrlString;
+    
+    const params = new URLSearchParams();
+    params.set('page', '1'); // Reset to page 1 when changing size
+    params.set('limit', newPageSize.toString()); // Always include limit
+    if (urlSearch) params.set('search', urlSearch);
+
+    const newUrl = `?${params.toString()}`;
+    router.replace(`/users${newUrl}`, { scroll: false });
+    
+    // Fetch immediately to update data
+    fetchUsers(1, newPageSize, urlSearch);
   };
 
 

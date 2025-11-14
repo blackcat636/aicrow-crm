@@ -12,13 +12,44 @@ const API_URL = (
 
 export async function getAllWorkflows(
   page: number = 1,
-  limit: number = 10
+  limit: number = 20,
+  instanceId?: number,
+  active?: boolean
 ): Promise<WorkflowsApiResponse> {
   try {
-    const response = await fetchWithAuth(
-      `${API_URL}/admin/automations/workflows?page=${page}&limit=${limit}`
-    );
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    if (instanceId !== undefined) {
+      params.set('instanceId', instanceId.toString());
+    }
+    if (active !== undefined) {
+      params.set('active', active.toString());
+    }
+    
+    const url = `${API_URL}/admin/automations/workflows?${params.toString()}`;
+    console.log('🌐 API Request URL:', url);
+    console.log('📦 API Request params:', {
+      page,
+      limit,
+      instanceId,
+      active,
+      activeType: typeof active
+    });
+    
+    const response = await fetchWithAuth(url);
     const data = (await response.json()) as WorkflowsApiResponse;
+
+    // Log response for debugging
+    console.log('📥 API Response:', {
+      status: response.status,
+      ok: response.ok,
+      dataStatus: data.status,
+      itemsCount: data.data?.items?.length || 0,
+      total: data.data?.total || 0,
+      firstItemActive: data.data?.items?.[0]?.active,
+      allItemsActive: data.data?.items?.map(item => ({ id: item.id, active: item.active }))
+    });
 
     if (!response.ok) {
       return {

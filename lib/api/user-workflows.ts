@@ -93,9 +93,21 @@ export async function getUserWorkflowByWorkflowId(
 export async function getUserWorkflows(
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
+  isActive?: boolean,
+  workflowId?: number
 ): Promise<UserWorkflowsApiResponse> {
-  const url = `${API_URL}/admin/automations/users/${userId}/workflows?page=${page}&limit=${limit}`;
+  const params = new URLSearchParams();
+  params.set('page', page.toString());
+  params.set('limit', limit.toString());
+  if (isActive !== undefined) {
+    params.set('isActive', isActive.toString());
+  }
+  if (workflowId !== undefined) {
+    params.set('workflowId', workflowId.toString());
+  }
+  
+  const url = `${API_URL}/admin/automations/users/${userId}/workflows?${params.toString()}`;
 
   try {
     const response = await fetchWithAuth(url);

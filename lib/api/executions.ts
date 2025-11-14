@@ -20,6 +20,9 @@ export async function getAllExecutions(
     mode?: string;
     workflowId?: string;
     instanceId?: number;
+    finished?: boolean;
+    hasErrors?: boolean;
+    isArchived?: boolean;
   }
 ): Promise<ApiResponse<ExecutionsResponse>> {
   try {
@@ -31,8 +34,14 @@ export async function getAllExecutions(
     if (filters?.status) params.append('status', filters.status);
     if (filters?.mode) params.append('mode', filters.mode);
     if (filters?.workflowId) params.append('workflowId', filters.workflowId);
-    if (filters?.instanceId)
+    if (filters?.instanceId !== undefined)
       params.append('instanceId', filters.instanceId.toString());
+    if (filters?.finished !== undefined)
+      params.append('finished', filters.finished.toString());
+    if (filters?.hasErrors !== undefined)
+      params.append('hasErrors', filters.hasErrors.toString());
+    if (filters?.isArchived !== undefined)
+      params.append('isArchived', filters.isArchived.toString());
 
     const response = await fetchWithAuth(
       `${API_URL}/admin/automations/executions?${params}`

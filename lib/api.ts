@@ -89,22 +89,29 @@ export async function fetchWithAuth(
 
   if (!isServer) {
     // 🎯 Проактивно перевіряємо токен за 5 хвилин до закінчення
-    const tokenValid = await ensureValidToken();
-
-    if (!tokenValid) {
-      removeTokens();
-      window.location.href = '/login';
-      throw new Error('Token validation failed');
-    }
+    // ensureValidToken автоматично спробує оновити токен якщо потрібно
+    await ensureValidToken();
 
     // Отримуємо актуальний токен після можливого оновлення
     const token = getCookieValue('access_token');
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     } else {
+      // Якщо токен все ще відсутній після спроби оновлення, тільки тоді редиректимо
+      const refreshToken = getCookieValue('refresh_token');
+      const deviceId = getCookieValue('device_id');
+      
+      // Якщо немає refresh token, тоді точно редирект
+      if (!refreshToken || !deviceId) {
+        removeTokens();
+        window.location.href = '/login';
+        throw new Error('No access token available and no refresh token');
+      }
+      
+      // Якщо є refresh token, але оновлення не вдалося, редирект
       removeTokens();
       window.location.href = '/login';
-      throw new Error('No access token available');
+      throw new Error('Token refresh failed');
     }
   }
 

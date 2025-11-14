@@ -15,6 +15,9 @@ interface ExecutionsStore {
     mode?: string;
     workflowId?: string;
     instanceId?: number;
+    finished?: boolean;
+    hasErrors?: boolean;
+    isArchived?: boolean;
   };
   fetchExecutions: (
     page?: number,
@@ -32,11 +35,11 @@ export const useExecutionsStore = create<ExecutionsStore>((set, get) => ({
   error: null,
   total: 0,
   page: 1,
-  limit: 10,
+  limit: 50,
   totalPages: 0,
   filters: {},
 
-  fetchExecutions: async (page = 1, limit = 10, filters = {}) => {
+  fetchExecutions: async (page = 1, limit = 50, filters = {}) => {
     // Enforce API limit of 100
     const validLimit = Math.min(limit, 100);
     if (limit > 100) {

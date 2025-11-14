@@ -20,12 +20,16 @@ interface UserWorkflowsStore {
   page: number;
   limit: number;
   currentUserId: number | null;
+  isActive: boolean | undefined;
+  workflowId: number | undefined;
 
   // Actions
   fetchUserWorkflows: (
     userId: number,
     page?: number,
-    limit?: number
+    limit?: number,
+    isActive?: boolean | null,
+    workflowId?: number | null
   ) => Promise<void>;
   createWorkflow: (
     userId: number,
@@ -49,12 +53,20 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
   page: 1,
   limit: 10,
   currentUserId: null,
+  isActive: undefined,
+  workflowId: undefined,
 
   setCurrentUserId: (userId: number | null) => {
     set({ currentUserId: userId });
   },
 
-  fetchUserWorkflows: async (userId: number, page = 1, limit = 10) => {
+  fetchUserWorkflows: async (
+    userId: number, 
+    page = 1, 
+    limit = 10,
+    isActive?: boolean | null,
+    workflowId?: number | null
+  ) => {
     // Enforce API limit of 100
     const validLimit = Math.min(limit, 100);
     if (limit > 100) {
@@ -65,9 +77,14 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
       return;
     }
 
+    // For isActive and workflowId, null means "clear filter" (use undefined for API)
+    // undefined means "use current state"
+    const currentIsActive = isActive === null ? undefined : (isActive !== undefined ? isActive : get().isActive);
+    const currentWorkflowId = workflowId === null ? undefined : (workflowId !== undefined ? workflowId : get().workflowId);
+
     set({ isLoading: true, error: null, currentUserId: userId });
     try {
-      const response = await getUserWorkflows(userId, page, validLimit);
+      const response = await getUserWorkflows(userId, page, validLimit, currentIsActive, currentWorkflowId);
 
       if ((response.status === 0 || response.status === 200) && response.data) {
         // Handle different response formats
@@ -87,7 +104,9 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
           userWorkflows: workflows,
           total: total,
           page: currentPage,
-          limit: pageLimit
+          limit: pageLimit,
+          isActive: currentIsActive,
+          workflowId: currentWorkflowId
         });
       } else {
         set({ error: response.message || 'Error loading user workflows' });

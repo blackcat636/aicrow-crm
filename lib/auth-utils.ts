@@ -87,20 +87,39 @@ export const ensureValidToken = async (): Promise<boolean> => {
   const token = getCookieValue('access_token');
 
   if (!token) {
+    // Якщо токен відсутній, спробуємо оновити через refresh token
+    const refreshToken = getCookieValue('refresh_token');
+    const deviceId = getCookieValue('device_id');
+    if (refreshToken && deviceId) {
+      return await refreshAccessToken();
+    }
     return false;
   }
 
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) {
+    // Якщо токен невалідний, спробуємо оновити через refresh token
+    const refreshToken = getCookieValue('refresh_token');
+    const deviceId = getCookieValue('device_id');
+    if (refreshToken && deviceId) {
+      return await refreshAccessToken();
+    }
     return false;
   }
 
   const now = Math.floor(Date.now() / 1000);
   const timeLeft = decoded.exp - now;
 
-  // Якщо залишилось менше 5 хвилин (300 секунд) - оновлюємо токен
+  // Якщо токен прострочений (timeLeft <= 0) або залишилось менше 5 хвилин (300 секунд) - оновлюємо токен
   if (timeLeft <= 300) {
-    return await refreshAccessToken();
+    const refreshed = await refreshAccessToken();
+    // Якщо оновлення не вдалося, але токен ще не прострочений (0 < timeLeft <= 300), продовжуємо з поточним токеном
+    // Якщо токен прострочений (timeLeft <= 0), повертаємо результат оновлення
+    if (timeLeft <= 0) {
+      return refreshed;
+    }
+    // Якщо оновлення не вдалося, але токен ще валідний, продовжуємо
+    return refreshed || true;
   }
 
   return true;

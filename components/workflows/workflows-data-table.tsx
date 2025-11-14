@@ -755,27 +755,26 @@ export function WorkflowsDataTable({
             {table.getFilteredRowModel().rows.length} rows selected.
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
+            <div className="flex items-center gap-2">
               <Label htmlFor="rows-per-page" className="text-sm font-medium">
                 Rows per page
               </Label>
               <Select
-                value={isAllSelected ? 'all' : `${table.getState().pagination.pageSize}`}
+                value={isAllSelected ? 'all' : `${limit}`}
                 onValueChange={(value) => {
                   const pageSize = Number(value)
                   // Ensure page size doesn't exceed API limit of 100
                   const validPageSize = Math.min(pageSize, 100)
-                  table.setPageSize(validPageSize)
                   onPageSizeChange(validPageSize)
                 }}
               >
                 <SelectTrigger size="sm" className="w-20" id="rows-per-page">
                   <SelectValue
-                    placeholder={isAllSelected ? 'All' : table.getState().pagination.pageSize}
+                    placeholder={isAllSelected ? 'All' : limit}
                   />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[10, 25, 50, 100].map((pageSize) => (
+                  {[10, 20, 50, 100].map((pageSize) => (
                     <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>
@@ -784,15 +783,15 @@ export function WorkflowsDataTable({
               </Select>
             </div>
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
+              Page {page} of{" "}
+              {Math.ceil(total / limit)}
             </div>
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
               <Button
                 variant="outline"
                 className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage() || isLoading}
+                onClick={() => onPageChange(1)}
+                disabled={page <= 1 || isLoading}
               >
                 <span className="sr-only">Go to first page</span>
                 <IconChevronsLeft className="h-4 w-4" />
@@ -801,8 +800,8 @@ export function WorkflowsDataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage() || isLoading}
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1 || isLoading}
               >
                 <span className="sr-only">Previous page</span>
                 <IconChevronLeft className="h-4 w-4" />
@@ -810,8 +809,8 @@ export function WorkflowsDataTable({
               
               {/* Page number buttons */}
               {(() => {
-                const pageCount = table.getPageCount()
-                const currentPage = table.getState().pagination.pageIndex + 1
+                const pageCount = Math.ceil(total / limit)
+                const currentPage = page // Use page from props instead of table state
                 const maxVisible = 7
                 const pages: (number | string)[] = []
                 
@@ -859,7 +858,7 @@ export function WorkflowsDataTable({
                       key={page}
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
-                      onClick={() => table.setPageIndex((page as number) - 1)}
+                      onClick={() => onPageChange(page as number)}
                       disabled={isLoading}
                     >
                       {page}
@@ -872,8 +871,8 @@ export function WorkflowsDataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage() || isLoading}
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= Math.ceil(total / limit) || isLoading}
               >
                 <span className="sr-only">Next page</span>
                 <IconChevronRight className="h-4 w-4" />
@@ -882,8 +881,8 @@ export function WorkflowsDataTable({
                 variant="outline"
                 className="hidden size-8 lg:flex"
                 size="icon"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage() || isLoading}
+                onClick={() => onPageChange(Math.ceil(total / limit))}
+                disabled={page >= Math.ceil(total / limit) || isLoading}
               >
                 <span className="sr-only">Go to last page</span>
                 <IconChevronsRight className="h-4 w-4" />
