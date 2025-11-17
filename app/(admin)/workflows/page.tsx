@@ -1,6 +1,6 @@
 "use client"
 export const runtime = 'edge';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WorkflowsDataTable } from "@/components/workflows/workflows-data-table"
 import { useWorkflowsStore } from "@/store/useWorkflowsStore"
@@ -13,13 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { IconSearch } from "@tabler/icons-react"
+import { WorkflowFilters } from '@/lib/api/workflows'
 
 export default function Page() { 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { workflows, isLoading, error, total, page, limit, instanceId, active, fetchWorkflows } = useWorkflowsStore()
-  const [instanceIdInput, setInstanceIdInput] = useState<string>(instanceId?.toString() || '');
-  const [activeFilter, setActiveFilter] = useState<string>(active !== undefined ? active.toString() : 'all');
+  const { workflows, isLoading, error, total, page, limit, fetchWorkflows } = useWorkflowsStore()
+  
+  // Local state for filter inputs
+  const [instanceIdInput, setInstanceIdInput] = useState<string>('');
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [availableToUsersFilter, setAvailableToUsersFilter] = useState<string>('all');
+  
   const previousUrlRef = useRef<string>('');
   const isInitializedRef = useRef(false);
 
@@ -34,10 +41,17 @@ export default function Page() {
         const params = new URLSearchParams();
         params.set('page', urlPage || '1');
         params.set('limit', urlLimit || '20');
+        
+        // Preserve existing filter params
         const urlInstanceId = searchParams.get('instanceId');
+        const urlSearch = searchParams.get('search');
         const urlActive = searchParams.get('active');
+        const urlAvailableToUsers = searchParams.get('availableToUsers');
+        
         if (urlInstanceId) params.set('instanceId', urlInstanceId);
+        if (urlSearch) params.set('search', urlSearch);
         if (urlActive) params.set('active', urlActive);
+        if (urlAvailableToUsers) params.set('availableToUsers', urlAvailableToUsers);
         
         const newUrl = `?${params.toString()}`;
         router.replace(`/workflows${newUrl}`, { scroll: false });
@@ -51,231 +65,191 @@ export default function Page() {
   // Sync URL → Store: Fetch data when URL changes
   useEffect(() => {
     if (!isInitializedRef.current) {
-      return; // Wait for initialization
+      return;
     }
 
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
     const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
     const urlInstanceId = searchParams.get('instanceId');
-    const urlActive = searchParams.get('active');
-    
-    // Use null to explicitly clear filter when not in URL (store will convert to undefined for API)
-    const parsedInstanceId = urlInstanceId ? parseInt(urlInstanceId, 10) : null;
-    // Parse active: if present in URL, convert to boolean (true/false), otherwise null (clear filter)
-    const parsedActive = urlActive !== null ? (urlActive === 'true' ? true : false) : null;
+    const urlSearch = searchParams.get('search') || '';
+    const urlActive = searchParams.get('active') || 'all';
+    const urlAvailableToUsers = searchParams.get('availableToUsers') || 'all';
     
     // Update local state from URL
-    if (parsedInstanceId !== null && parsedInstanceId.toString() !== instanceIdInput) {
-      setInstanceIdInput(parsedInstanceId.toString());
-    } else if (parsedInstanceId === null && instanceIdInput !== '') {
-      setInstanceIdInput('');
-    }
+    setInstanceIdInput(urlInstanceId || '');
+    setSearchInput(urlSearch);
+    setActiveFilter(urlActive);
+    setAvailableToUsersFilter(urlAvailableToUsers);
     
-    // Update activeFilter from URL
-    if (parsedActive !== null) {
-      // parsedActive is boolean (true or false), convert to string for Select component
-      const newActiveFilter = parsedActive.toString();
-      if (newActiveFilter !== activeFilter) {
-        setActiveFilter(newActiveFilter);
-      }
-    } else if (parsedActive === null && activeFilter !== 'all') {
-      setActiveFilter('all');
-    }
-    
+    // Build filters object
+    // Explicitly set undefined to clear filters when empty or "all" is selected
+    const filters: WorkflowFilters = {
+      page: urlPage,
+      limit: urlLimit,
+      // Explicitly set undefined when empty to clear the filter in store
+      instanceId: urlInstanceId ? parseInt(urlInstanceId, 10) : undefined,
+      search: urlSearch || undefined,
+      // Explicitly set undefined when "all" to clear the filter in store
+      active: urlActive !== 'all' ? (urlActive === 'true') : undefined,
+      availableToUsers: urlAvailableToUsers !== 'all' ? (urlAvailableToUsers === 'true') : undefined,
+    };
+
     // Create URL string for comparison
-    const currentUrl = `page=${urlPage}&limit=${urlLimit}&instanceId=${parsedInstanceId ?? ''}&active=${parsedActive ?? ''}`;
+    const currentUrl = `page=${urlPage}&limit=${urlLimit}&instanceId=${urlInstanceId || ''}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}`;
     
     // Only fetch if URL actually changed
     if (previousUrlRef.current !== currentUrl) {
       previousUrlRef.current = currentUrl;
-      
-      // Debug logging
-      console.log('🔍 Fetching workflows with params:', {
-        page: urlPage,
-        limit: urlLimit,
-        instanceId: parsedInstanceId,
-        active: parsedActive,
-        urlActive: urlActive
-      });
-      
-      // Fetch data from URL params
-      // Pass null to explicitly clear filters (store will convert to undefined for API)
-      fetchWorkflows(urlPage, urlLimit, parsedInstanceId, parsedActive);
+      fetchWorkflows(filters);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, fetchWorkflows]); // Include fetchWorkflows to ensure it's available
+  }, [searchParams, fetchWorkflows]);
+
+  const updateFilters = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('page', '1'); // Reset to page 1 when filtering
+    params.set('limit', limit.toString());
+    
+    if (instanceIdInput.trim()) params.set('instanceId', instanceIdInput.trim());
+    if (searchInput.trim()) params.set('search', searchInput.trim());
+    if (activeFilter !== 'all') params.set('active', activeFilter);
+    if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
+
+    // Update previousUrlRef to match the new URL before navigation
+    const newUrlString = `page=1&limit=${limit}&instanceId=${instanceIdInput.trim() || ''}&search=${searchInput.trim()}&active=${activeFilter !== 'all' ? activeFilter : ''}&availableToUsers=${availableToUsersFilter !== 'all' ? availableToUsersFilter : ''}`;
+    previousUrlRef.current = newUrlString;
+
+    router.replace(`/workflows?${params.toString()}`, { scroll: false });
+  }, [instanceIdInput, searchInput, activeFilter, availableToUsersFilter, limit, router]);
+
+  // Debounced search for text inputsimage.png
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateFilters();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [instanceIdInput, searchInput, updateFilters]);
 
   const handlePageChange = (newPage: number) => {
-    const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlActive = searchParams.get('active');
-    
-    // Update previousUrlRef immediately to prevent duplicate fetches
-    // Use null to explicitly clear filters when not in URL
-    const parsedInstanceId = urlInstanceId ? parseInt(urlInstanceId, 10) : null;
-    const parsedActive = urlActive !== null ? (urlActive === 'true' ? true : false) : null;
-    const newUrlString = `page=${newPage}&limit=${urlLimit}&instanceId=${parsedInstanceId ?? ''}&active=${parsedActive ?? ''}`;
-    previousUrlRef.current = newUrlString;
-    
     const params = new URLSearchParams();
     params.set('page', newPage.toString());
-    params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlActive) params.set('active', urlActive);
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/workflows${newUrl}`, { scroll: false });
+    params.set('limit', limit.toString());
     
-    // Fetch immediately to update data
-    // Pass null to explicitly clear filters (store will convert to undefined for API)
-    fetchWorkflows(newPage, urlLimit, parsedInstanceId, parsedActive);
+    if (instanceIdInput.trim()) params.set('instanceId', instanceIdInput.trim());
+    if (searchInput.trim()) params.set('search', searchInput.trim());
+    if (activeFilter !== 'all') params.set('active', activeFilter);
+    if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
+
+    router.replace(`/workflows?${params.toString()}`, { scroll: false });
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlActive = searchParams.get('active');
-    
-    // Update previousUrlRef immediately to prevent duplicate fetches
-    // Use null to explicitly clear filters when not in URL
-    const parsedInstanceId = urlInstanceId ? parseInt(urlInstanceId, 10) : null;
-    const parsedActive = urlActive !== null ? (urlActive === 'true' ? true : false) : null;
-    const newUrlString = `page=1&limit=${newPageSize}&instanceId=${parsedInstanceId ?? ''}&active=${parsedActive ?? ''}`;
-    previousUrlRef.current = newUrlString;
-    
     const params = new URLSearchParams();
     params.set('page', '1');
     params.set('limit', newPageSize.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlActive) params.set('active', urlActive);
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/workflows${newUrl}`, { scroll: false });
     
-    // Fetch immediately to update data
-    // Pass null to explicitly clear filters (store will convert to undefined for API)
-    fetchWorkflows(1, newPageSize, parsedInstanceId, parsedActive);
-  };
+    if (instanceIdInput.trim()) params.set('instanceId', instanceIdInput.trim());
+    if (searchInput.trim()) params.set('search', searchInput.trim());
+    if (activeFilter !== 'all') params.set('active', activeFilter);
+    if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
 
-  const handleInstanceIdChange = (value: string) => {
-    setInstanceIdInput(value);
-    const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
-    const urlActive = searchParams.get('active');
-    
-    const params = new URLSearchParams();
-    params.set('page', '1'); // Reset to page 1 when filtering
-    params.set('limit', urlLimit.toString());
-    if (value) {
-      const instanceIdNum = parseInt(value, 10);
-      if (!isNaN(instanceIdNum)) {
-        params.set('instanceId', instanceIdNum.toString());
-      }
-    }
-    if (urlActive) params.set('active', urlActive);
-
-    // Update previousUrlRef immediately to prevent duplicate fetches
-    // Use null to explicitly clear the filter when empty
-    const parsedInstanceId = value ? parseInt(value, 10) : null;
-    const parsedActive = urlActive !== null ? (urlActive === 'true' ? true : false) : null;
-    const newUrlString = `page=1&limit=${urlLimit}&instanceId=${parsedInstanceId ?? ''}&active=${parsedActive ?? ''}`;
-    previousUrlRef.current = newUrlString;
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/workflows${newUrl}`, { scroll: false });
-    
-    // Fetch immediately to update data
-    // Pass null to explicitly clear the filter (store will convert to undefined for API)
-    fetchWorkflows(1, urlLimit, parsedInstanceId, parsedActive);
-  };
-
-  const handleActiveChange = (value: string) => {
-    setActiveFilter(value);
-    const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    
-    const params = new URLSearchParams();
-    params.set('page', '1'); // Reset to page 1 when filtering
-    params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (value && value !== 'all') {
-      params.set('active', value);
-    }
-
-    // Update previousUrlRef immediately to prevent duplicate fetches
-    const parsedInstanceId = urlInstanceId ? parseInt(urlInstanceId, 10) : null;
-    // Use null to explicitly clear the filter when "all" is selected
-    const parsedActive = value && value !== 'all' ? value === 'true' : null;
-    const newUrlString = `page=1&limit=${urlLimit}&instanceId=${parsedInstanceId ?? ''}&active=${parsedActive ?? ''}`;
-    previousUrlRef.current = newUrlString;
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/workflows${newUrl}`, { scroll: false });
-    
-    // Fetch immediately to update data
-    // Pass null to explicitly clear the filter (store will convert to undefined for API)
-    fetchWorkflows(1, urlLimit, parsedInstanceId, parsedActive);
-  };
-
-  const handleFiltersChange = () => {
-    // Handled by individual filter handlers
+    router.replace(`/workflows?${params.toString()}`, { scroll: false });
   };
 
   if (isLoading && workflows.length === 0) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2 px-6 pb-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold">Workflows</h1>
-                <p className="text-sm text-muted-foreground">
-                  Page {page} of {Math.ceil(total / limit)} • Total: {total} workflows
-                </p>
-              </div>  
-            </div>
-            <div className="flex items-center gap-4 py-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="instanceId" className="text-sm font-medium whitespace-nowrap">
-                  Instance ID:
-                </Label>
-                <Input
-                  id="instanceId"
-                  type="text"
-                  placeholder="Filter by instance ID"
-                  value={instanceIdInput}
-                  onChange={(e) => handleInstanceIdChange(e.target.value)}
-                  className="w-32"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="active" className="text-sm font-medium whitespace-nowrap">
-                  Active:
-                </Label>
-                <Select value={activeFilter} onValueChange={handleActiveChange}>
-                  <SelectTrigger id="active" className="w-32">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <WorkflowsDataTable 
-                data={workflows} 
-                total={total}
-                page={page}
-                limit={limit}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-                onFiltersChange={handleFiltersChange}
-                isLoading={isLoading}
+    <div className="flex flex-1 flex-col">
+      <div className="@container/main flex flex-1 flex-col gap-2 px-6 pb-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Workflows</h1>
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {Math.ceil(total / limit)} • Total: {total} workflows
+            </p>
+          </div>  
+        </div>
+        
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 py-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="instanceId" className="text-sm font-medium whitespace-nowrap">
+              Instance ID:
+            </Label>
+            <Input
+              id="instanceId"
+              type="text"
+              placeholder="Instance ID"
+              value={instanceIdInput}
+              onChange={(e) => setInstanceIdInput(e.target.value)}
+              onBlur={updateFilters}
+              className="w-32"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Label htmlFor="search" className="text-sm font-medium whitespace-nowrap">
+              Search:
+            </Label>
+            <div className="relative">
+              <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="search"
+                type="text"
+                placeholder="Name, display name..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9 w-64"
               />
             </div>
           </div>
+          
+          <div className="flex items-center gap-2">
+            <Label htmlFor="active" className="text-sm font-medium whitespace-nowrap">
+              Active:
+            </Label>
+            <Select value={activeFilter} onValueChange={(value) => { setActiveFilter(value); updateFilters(); }}>
+              <SelectTrigger id="active" className="w-32">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Label htmlFor="availableToUsers" className="text-sm font-medium whitespace-nowrap">
+              Available to Users:
+            </Label>
+            <Select value={availableToUsersFilter} onValueChange={(value) => { setAvailableToUsersFilter(value); updateFilters(); }}>
+              <SelectTrigger id="availableToUsers" className="w-40">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="true">Yes</SelectItem>
+                <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        
+        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+          <WorkflowsDataTable 
+            data={workflows} 
+            total={total}
+            page={page}
+            limit={limit}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
+    </div>
   )
 }

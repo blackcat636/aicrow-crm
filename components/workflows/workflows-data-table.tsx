@@ -34,7 +34,6 @@ import {
   IconServer,
   IconActivity,
   IconCalendar,
-  IconSearch,
 } from "@tabler/icons-react"
 import {
   ColumnDef,
@@ -70,7 +69,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
 import {
   Tabs,
 } from "@/components/ui/tabs"
@@ -385,30 +383,6 @@ const columns: ColumnDef<Workflow>[] = [
     ),
   },
   {
-    accessorKey: "tags",
-    header: "Tags",
-    cell: ({ row }) => (
-      <div className="w-32">
-        {row.original.tags && row.original.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {row.original.tags.slice(0, 2).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {String(tag)}
-              </Badge>
-            ))}
-            {row.original.tags.length > 2 && (
-              <Badge variant="outline" className="text-xs">
-                +{row.original.tags.length - 2}
-              </Badge>
-            )}
-          </div>
-        ) : (
-          <span className="text-sm text-muted-foreground">No tags</span>
-        )}
-      </div>
-    ),
-  },
-  {
     accessorKey: "createdAt",
     header: ({ column }) => {
       return (
@@ -687,17 +661,6 @@ export function WorkflowsDataTable({
       defaultValue="outline"
       className="w-full flex-col justify-start gap-6"
     >
-      <div className="flex items-center py-4">
-        <div className="relative flex-1 max-w-sm">
-          <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by ID or name..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
       <div className="overflow-hidden rounded-lg border">
           <DndContext
             collisionDetection={closestCenter}

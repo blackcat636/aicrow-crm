@@ -41,7 +41,7 @@ interface FormData {
 export function CreateUserDialog() {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { fetchUsers, page, limit, search } = useUsersStore()
+  const { fetchUsers, page, limit, filters } = useUsersStore()
 
   const [form, setForm] = useState<FormData>({
     email: "",
@@ -116,7 +116,7 @@ export function CreateUserDialog() {
       toast.success("User created successfully")
       setOpen(false)
       resetForm()
-      await fetchUsers(page, limit, search)
+      await fetchUsers({ page, limit, ...filters })
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to create user"

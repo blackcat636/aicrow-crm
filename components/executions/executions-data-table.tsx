@@ -152,7 +152,6 @@ export function ExecutionsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
-  const [globalFilter, setGlobalFilter] = React.useState('')
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: page - 1,
     pageSize: limit,
@@ -559,24 +558,6 @@ export function ExecutionsDataTable({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: (row, columnId, filterValue) => {
-      const execution = row.original as Execution
-      const searchValue = String(filterValue || '').toLowerCase().trim()
-      
-      if (!searchValue) return true
-      
-      // Search in ID
-      if (String(execution.id).includes(searchValue)) return true
-      
-      // Search in n8n ID
-      if (execution.n8nId.toLowerCase().includes(searchValue)) return true
-      
-      // Search in workflow name
-      const workflowName = String(execution.workflow?.name || execution.workflowName || 'Unknown')
-      if (workflowName.toLowerCase().includes(searchValue)) return true
-      
-      return false
-    },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: (updater) => {
@@ -601,7 +582,6 @@ export function ExecutionsDataTable({
       columnVisibility,
       rowSelection,
       pagination,
-      globalFilter,
     },
     pageCount: isAllSelected
       ? 1 // When "All" is selected, show only one page
@@ -612,14 +592,6 @@ export function ExecutionsDataTable({
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Search by ID, n8n ID, or workflow name..."
-          value={globalFilter ?? ""}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          className="max-w-sm"
-        />
-      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>

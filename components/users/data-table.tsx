@@ -141,7 +141,7 @@ function UserActions({ user }: { user: User }) {
       await deleteUser(user.id);
       // Small delay to ensure dialog closes before refreshing
       setTimeout(async () => {
-        await fetchUsers(page, limit);
+        await fetchUsers({ page, limit });
         toast.success('User deleted successfully');
       }, 100);
     } catch (error) {
@@ -159,7 +159,7 @@ function UserActions({ user }: { user: User }) {
     try {
       setIsLoading(true);
       await updateUserStatus(user.id, !(user.isActive !== false));
-      await fetchUsers(page, limit);
+      await fetchUsers({ page, limit });
       toast.success(`User ${user.isActive !== false ? 'blocked' : 'activated'} successfully`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update user status');

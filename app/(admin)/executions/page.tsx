@@ -2,7 +2,7 @@
 
 export const runtime = 'edge';
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useExecutionsStore } from '@/store/useExecutionsStore'
 import { ExecutionsDataTable } from '@/components/executions/executions-data-table'
@@ -36,8 +36,10 @@ export default function ExecutionsPage() {
   } = useExecutionsStore()
 
   // Local state for filter inputs
+  const [idInput, setIdInput] = useState<string>('');
   const [instanceIdInput, setInstanceIdInput] = useState<string>(filters.instanceId?.toString() || '');
   const [workflowIdInput, setWorkflowIdInput] = useState<string>(filters.workflowId || '');
+  const [searchInput, setSearchInput] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>(filters.status || 'all');
   const [finishedFilter, setFinishedFilter] = useState<string>(filters.finished !== undefined ? filters.finished.toString() : 'all');
   const [hasErrorsFilter, setHasErrorsFilter] = useState<string>(filters.hasErrors !== undefined ? filters.hasErrors.toString() : 'all');
@@ -58,14 +60,18 @@ export default function ExecutionsPage() {
         params.set('page', urlPage || '1');
         params.set('limit', urlLimit || '50');
         // Preserve existing filter params
+        const urlId = searchParams.get('id');
         const urlInstanceId = searchParams.get('instanceId');
         const urlWorkflowId = searchParams.get('workflowId');
+        const urlSearch = searchParams.get('search');
         const urlStatus = searchParams.get('status');
         const urlFinished = searchParams.get('finished');
         const urlHasErrors = searchParams.get('hasErrors');
         const urlIsArchived = searchParams.get('isArchived');
+        if (urlId) params.set('id', urlId);
         if (urlInstanceId) params.set('instanceId', urlInstanceId);
         if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
+        if (urlSearch) params.set('search', urlSearch);
         if (urlStatus) params.set('status', urlStatus);
         if (urlFinished) params.set('finished', urlFinished);
         if (urlHasErrors) params.set('hasErrors', urlHasErrors);
@@ -88,22 +94,32 @@ export default function ExecutionsPage() {
 
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const urlId = searchParams.get('id');
     const urlInstanceId = searchParams.get('instanceId');
     const urlWorkflowId = searchParams.get('workflowId');
+    const urlSearch = searchParams.get('search') || '';
     const urlStatus = searchParams.get('status');
     const urlFinished = searchParams.get('finished');
     const urlHasErrors = searchParams.get('hasErrors');
     const urlIsArchived = searchParams.get('isArchived');
     
     // Parse filters from URL
+    const parsedId = urlId ? parseInt(urlId, 10) : undefined;
     const parsedInstanceId = urlInstanceId ? parseInt(urlInstanceId, 10) : undefined;
     const parsedWorkflowId = urlWorkflowId || undefined;
+    const parsedSearch = urlSearch || undefined;
     const parsedStatus = urlStatus || undefined;
     const parsedFinished = urlFinished !== null ? urlFinished === 'true' : undefined;
     const parsedHasErrors = urlHasErrors !== null ? urlHasErrors === 'true' : undefined;
     const parsedIsArchived = urlIsArchived !== null ? urlIsArchived === 'true' : undefined;
     
     // Update local state from URL
+    if (parsedId !== undefined && parsedId.toString() !== idInput) {
+      setIdInput(parsedId.toString());
+    } else if (parsedId === undefined && idInput !== '') {
+      setIdInput('');
+    }
+    
     if (parsedInstanceId !== undefined && parsedInstanceId.toString() !== instanceIdInput) {
       setInstanceIdInput(parsedInstanceId.toString());
     } else if (parsedInstanceId === undefined && instanceIdInput !== '') {
@@ -114,6 +130,12 @@ export default function ExecutionsPage() {
       setWorkflowIdInput(parsedWorkflowId);
     } else if (parsedWorkflowId === undefined && workflowIdInput !== '') {
       setWorkflowIdInput('');
+    }
+    
+    if (parsedSearch !== undefined && parsedSearch !== searchInput) {
+      setSearchInput(parsedSearch);
+    } else if (parsedSearch === undefined && searchInput !== '') {
+      setSearchInput('');
     }
     
     if (parsedStatus !== undefined && parsedStatus !== statusFilter) {
@@ -142,8 +164,10 @@ export default function ExecutionsPage() {
     
     // Build filters object
     const newFilters = {
+      ...(parsedId !== undefined && { id: parsedId }),
       ...(parsedInstanceId !== undefined && { instanceId: parsedInstanceId }),
       ...(parsedWorkflowId && { workflowId: parsedWorkflowId }),
+      ...(parsedSearch && { search: parsedSearch }),
       ...(parsedStatus && { status: parsedStatus }),
       ...(parsedFinished !== undefined && { finished: parsedFinished }),
       ...(parsedHasErrors !== undefined && { hasErrors: parsedHasErrors }),
@@ -151,7 +175,7 @@ export default function ExecutionsPage() {
     };
     
     // Create URL string for comparison
-    const currentUrl = `page=${urlPage}&limit=${urlLimit}&instanceId=${parsedInstanceId ?? ''}&workflowId=${parsedWorkflowId ?? ''}&status=${parsedStatus ?? ''}&finished=${parsedFinished ?? ''}&hasErrors=${parsedHasErrors ?? ''}&isArchived=${parsedIsArchived ?? ''}`;
+    const currentUrl = `page=${urlPage}&limit=${urlLimit}&id=${parsedId ?? ''}&instanceId=${parsedInstanceId ?? ''}&workflowId=${parsedWorkflowId ?? ''}&search=${parsedSearch ?? ''}&status=${parsedStatus ?? ''}&finished=${parsedFinished ?? ''}&hasErrors=${parsedHasErrors ?? ''}&isArchived=${parsedIsArchived ?? ''}`;
     
     // Only fetch if URL actually changed
     if (previousUrlRef.current !== currentUrl) {
@@ -174,202 +198,146 @@ export default function ExecutionsPage() {
     // Intentionally left blank: parent handles fetching via effects and store
   }
 
+  // Helper function to get all current filter values from URL
+  const getAllFilterParams = useCallback(() => {
+    return {
+      urlId: searchParams.get('id'),
+      urlInstanceId: searchParams.get('instanceId'),
+      urlWorkflowId: searchParams.get('workflowId'),
+      urlSearch: searchParams.get('search'),
+      urlStatus: searchParams.get('status'),
+      urlFinished: searchParams.get('finished'),
+      urlHasErrors: searchParams.get('hasErrors'),
+      urlIsArchived: searchParams.get('isArchived'),
+    };
+  }, [searchParams]);
+
+  // Helper function to build URL params with all filters
+  const buildParamsWithFilters = useCallback((overrides: Record<string, string | null> = {}) => {
+    const params = new URLSearchParams();
+    const filters = getAllFilterParams();
+    
+    // Apply overrides
+    const finalFilters = { ...filters, ...overrides };
+    
+    // Add all filters to params
+    if (finalFilters.urlId) params.set('id', finalFilters.urlId);
+    if (finalFilters.urlInstanceId) params.set('instanceId', finalFilters.urlInstanceId);
+    if (finalFilters.urlWorkflowId) params.set('workflowId', finalFilters.urlWorkflowId);
+    if (finalFilters.urlSearch) params.set('search', finalFilters.urlSearch);
+    if (finalFilters.urlStatus) params.set('status', finalFilters.urlStatus);
+    if (finalFilters.urlFinished) params.set('finished', finalFilters.urlFinished);
+    if (finalFilters.urlHasErrors) params.set('hasErrors', finalFilters.urlHasErrors);
+    if (finalFilters.urlIsArchived) params.set('isArchived', finalFilters.urlIsArchived);
+    
+    return params;
+  }, [getAllFilterParams]);
+
+  // Debounced search for text inputs
+  const updateFilters = useCallback(() => {
+    const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const params = buildParamsWithFilters({
+      urlId: idInput.trim() || null,
+      urlSearch: searchInput.trim() || null,
+    });
+    params.set('page', '1');
+    params.set('limit', urlLimit.toString());
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
+  }, [idInput, searchInput, searchParams, router, buildParamsWithFilters]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateFilters();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [idInput, searchInput, updateFilters]);
+
+  const handleIdChange = (value: string) => {
+    setIdInput(value);
+    const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const params = buildParamsWithFilters({ urlId: value || null });
+    params.set('page', '1');
+    params.set('limit', urlLimit.toString());
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const params = buildParamsWithFilters({ urlSearch: value || null });
+    params.set('page', '1');
+    params.set('limit', urlLimit.toString());
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
+  };
+
   const handlePageChange = (newPage: number) => {
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlStatus = searchParams.get('status');
-    const urlFinished = searchParams.get('finished');
-    const urlHasErrors = searchParams.get('hasErrors');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters();
     params.set('page', newPage.toString());
     params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlStatus = searchParams.get('status');
-    const urlFinished = searchParams.get('finished');
-    const urlHasErrors = searchParams.get('hasErrors');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters();
     params.set('page', '1');
     params.set('limit', newPageSize.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handleInstanceIdChange = (value: string) => {
     setInstanceIdInput(value);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlStatus = searchParams.get('status');
-    const urlFinished = searchParams.get('finished');
-    const urlHasErrors = searchParams.get('hasErrors');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters({ urlInstanceId: value || null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-    if (value) {
-      const instanceIdNum = parseInt(value, 10);
-      if (!isNaN(instanceIdNum)) {
-        params.set('instanceId', instanceIdNum.toString());
-      }
-    }
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handleWorkflowIdChange = (value: string) => {
     setWorkflowIdInput(value);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlStatus = searchParams.get('status');
-    const urlFinished = searchParams.get('finished');
-    const urlHasErrors = searchParams.get('hasErrors');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters({ urlWorkflowId: value || null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-    if (value) {
-      params.set('workflowId', value);
-    }
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlFinished = searchParams.get('finished');
-    const urlHasErrors = searchParams.get('hasErrors');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters({ urlStatus: value && value !== 'all' ? value : null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-    if (value && value !== 'all') {
-      params.set('status', value);
-    }
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handleFinishedChange = (value: string) => {
     setFinishedFilter(value);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlStatus = searchParams.get('status');
-    const urlHasErrors = searchParams.get('hasErrors');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters({ urlFinished: value && value !== 'all' ? value : null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-    if (value && value !== 'all') {
-      params.set('finished', value);
-    }
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handleHasErrorsChange = (value: string) => {
     setHasErrorsFilter(value);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlStatus = searchParams.get('status');
-    const urlFinished = searchParams.get('finished');
-    const urlIsArchived = searchParams.get('isArchived');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters({ urlHasErrors: value && value !== 'all' ? value : null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlIsArchived) params.set('isArchived', urlIsArchived);
-    if (value && value !== 'all') {
-      params.set('hasErrors', value);
-    }
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   const handleIsArchivedChange = (value: string) => {
     setIsArchivedFilter(value);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlInstanceId = searchParams.get('instanceId');
-    const urlWorkflowId = searchParams.get('workflowId');
-    const urlStatus = searchParams.get('status');
-    const urlFinished = searchParams.get('finished');
-    const urlHasErrors = searchParams.get('hasErrors');
-    
-    const params = new URLSearchParams();
+    const params = buildParamsWithFilters({ urlIsArchived: value && value !== 'all' ? value : null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
-    if (urlInstanceId) params.set('instanceId', urlInstanceId);
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (urlStatus) params.set('status', urlStatus);
-    if (urlFinished) params.set('finished', urlFinished);
-    if (urlHasErrors) params.set('hasErrors', urlHasErrors);
-    if (value && value !== 'all') {
-      params.set('isArchived', value);
-    }
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/executions${newUrl}`, { scroll: false });
+    router.replace(`/executions?${params.toString()}`, { scroll: false });
   };
 
   return (
@@ -452,13 +420,26 @@ export default function ExecutionsPage() {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-4 py-4">
               <div className="flex items-center gap-2">
+                <Label htmlFor="id" className="text-sm font-medium whitespace-nowrap">
+                  ID:
+                </Label>
+                <Input
+                  id="id"
+                  type="text"
+                  placeholder="Execution ID"
+                  value={idInput}
+                  onChange={(e) => handleIdChange(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+              <div className="flex items-center gap-2">
                 <Label htmlFor="instanceId" className="text-sm font-medium whitespace-nowrap">
                   Instance ID:
                 </Label>
                 <Input
                   id="instanceId"
                   type="text"
-                  placeholder="Filter by instance ID"
+                  placeholder="Instance ID"
                   value={instanceIdInput}
                   onChange={(e) => handleInstanceIdChange(e.target.value)}
                   className="w-32"
@@ -471,10 +452,23 @@ export default function ExecutionsPage() {
                 <Input
                   id="workflowId"
                   type="text"
-                  placeholder="Filter by workflow ID"
+                  placeholder="Workflow ID"
                   value={workflowIdInput}
                   onChange={(e) => handleWorkflowIdChange(e.target.value)}
                   className="w-32"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="search" className="text-sm font-medium whitespace-nowrap">
+                  Search:
+                </Label>
+                <Input
+                  id="search"
+                  type="text"
+                  placeholder="Workflow name, n8n ID..."
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-64"
                 />
               </div>
               <div className="flex items-center gap-2">

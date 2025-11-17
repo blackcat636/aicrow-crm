@@ -64,7 +64,7 @@ export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
 
   // Load users on component mount
   useEffect(() => {
-    fetchUsers(1, 100);
+    fetchUsers({ page: 1, limit: 100 });
   }, [fetchUsers]);
 
   // Filter users based on search query

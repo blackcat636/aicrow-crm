@@ -45,7 +45,17 @@ export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
   let isAuthenticated = false;
 
-  if (accessToken) {
+  // If access token is missing, try to refresh using refresh_token + device_id
+  if (!accessToken) {
+    try {
+      const refreshResponse = await refreshAccessToken(request);
+      if (refreshResponse) {
+        return refreshResponse;
+      }
+    } catch (error) {
+      console.error('❌ Middleware: Refresh attempt when access token missing failed:', error);
+    }
+  } else {
     try {
       // Simple JWT validation without external dependencies
       const parts = accessToken.split('.');

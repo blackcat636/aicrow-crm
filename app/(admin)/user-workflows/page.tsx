@@ -2,15 +2,16 @@
 
 export const runtime = 'edge';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserWorkflowsStore } from "@/store/useUserWorkflowsStore"
 import { useUserStore } from "@/store/useUserStore"
 import { useUsersStore } from "@/store/useUsersStore"
+import { UserFilters } from "@/lib/api/users"
 import { UserWorkflowsDataTable } from "@/components/user-workflows/user-workflows-data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { IconPlus, IconSettings, IconActivity, IconCircleCheckFilled, IconUsers, IconSearch, IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react"
+import { IconPlus, IconSettings, IconActivity, IconCircleCheckFilled, IconUsers, IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,9 +21,15 @@ export default function UserWorkflowsOverviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUserStore()
-  const { users, fetchUsers, isLoading: usersLoading, error: usersError, total: usersTotal, page: usersPage, limit: usersLimit, setSearch: setUsersSearch } = useUsersStore()
+  const { users, fetchUsers, isLoading: usersLoading, error: usersError, total: usersTotal, page: usersPage, limit: usersLimit } = useUsersStore()
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  
+  // Local state for filter inputs
+  const [idInput, setIdInput] = useState<string>('');
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [usernameInput, setUsernameInput] = useState<string>('');
+  const [firstNameInput, setFirstNameInput] = useState<string>('');
+  const [lastNameInput, setLastNameInput] = useState<string>('');
   const { 
     userWorkflows, 
     isLoading, 
@@ -37,6 +44,8 @@ export default function UserWorkflowsOverviewPage() {
   const [workflowIdInput, setWorkflowIdInput] = useState<string>(workflowId?.toString() || '');
   const previousUrlRef = useRef<string>('');
   const isInitializedRef = useRef(false);
+  const previousUsersUrlRef = useRef<string>('');
+  const usersInitializedRef = useRef(false);
 
   // Check if user is admin
   const isAdmin = user?.role === 'admin'
@@ -96,8 +105,9 @@ export default function UserWorkflowsOverviewPage() {
     const urlWorkflowId = searchParams.get('workflowId');
     
     // Use null to explicitly clear filter when not in URL (store will convert to undefined for API)
-    const parsedIsActive = urlIsActive !== null ? (urlIsActive === 'true' ? true : false) : null;
-    const parsedWorkflowId = urlWorkflowId ? parseInt(urlWorkflowId, 10) : null;
+    // searchParams.get() returns null when param is missing, not undefined
+    const parsedIsActive = urlIsActive !== null && urlIsActive !== undefined ? (urlIsActive === 'true' ? true : false) : null;
+    const parsedWorkflowId = urlWorkflowId && urlWorkflowId !== '' ? parseInt(urlWorkflowId, 10) : null;
     
     // Update local state from URL
     if (parsedIsActive !== null) {
@@ -128,32 +138,126 @@ export default function UserWorkflowsOverviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, fetchUserWorkflows, selectedUserId]);
 
-  // Initial load for admin
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers(1, 25);
+  // Define updateUsersFilters before it's used in useEffect
+  // This function is only called when filter inputs change, not when page changes
+  const updateUsersFilters = useCallback(() => {
+    if (!isAdmin) return;
+    
+    const params = new URLSearchParams(searchParams.toString());
+    // Only reset to page 1 when filters change, preserve current page if it exists
+    const currentPage = searchParams.get('usersPage');
+    params.set('usersPage', currentPage || '1');
+    params.set('usersLimit', usersLimit.toString());
+    
+    // Explicitly set or remove parameters based on input values
+    if (idInput.trim()) {
+      params.set('usersId', idInput.trim());
+    } else {
+      params.delete('usersId');
     }
-  }, [isAdmin, fetchUsers]);
+    
+    if (emailInput.trim()) {
+      params.set('usersEmail', emailInput.trim());
+    } else {
+      params.delete('usersEmail');
+    }
+    
+    if (usernameInput.trim()) {
+      params.set('usersUsername', usernameInput.trim());
+    } else {
+      params.delete('usersUsername');
+    }
+    
+    if (firstNameInput.trim()) {
+      params.set('usersFirstName', firstNameInput.trim());
+    } else {
+      params.delete('usersFirstName');
+    }
+    
+    if (lastNameInput.trim()) {
+      params.set('usersLastName', lastNameInput.trim());
+    } else {
+      params.delete('usersLastName');
+    }
 
-  // Use debounced search to avoid too many API calls
+    router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
+  }, [isAdmin, idInput, emailInput, usernameInput, firstNameInput, lastNameInput, usersLimit, searchParams, router]);
+
+  // Initialize URL with usersPage and usersLimit if not present (for admin user selector)
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    if (!usersInitializedRef.current) {
+      const urlUsersPage = searchParams.get('usersPage');
+      const urlUsersLimit = searchParams.get('usersLimit');
+      
+      // If usersPage or usersLimit are missing, add them to URL
+      if (!urlUsersPage || !urlUsersLimit) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('usersPage', urlUsersPage || '1');
+        params.set('usersLimit', urlUsersLimit || '25');
+        
+        // Preserve existing params
+        router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
+        usersInitializedRef.current = true;
+        return;
+      }
+      usersInitializedRef.current = true;
+    }
+  }, [searchParams, router, isAdmin]);
+
+  // Sync URL → Store: Fetch users when URL changes (for admin user selector)
+  useEffect(() => {
+    if (!isAdmin || !usersInitializedRef.current) return;
+    
+    const urlPage = parseInt(searchParams.get('usersPage') || '1', 10);
+    const urlLimit = parseInt(searchParams.get('usersLimit') || '25', 10);
+    const urlId = searchParams.get('usersId');
+    const urlEmail = searchParams.get('usersEmail') || '';
+    const urlUsername = searchParams.get('usersUsername') || '';
+    const urlFirstName = searchParams.get('usersFirstName') || '';
+    const urlLastName = searchParams.get('usersLastName') || '';
+    
+    // Create URL string for comparison (use empty string for null/undefined values)
+    const currentUsersUrl = `usersPage=${urlPage}&usersLimit=${urlLimit}&usersId=${urlId || ''}&usersEmail=${urlEmail}&usersUsername=${urlUsername}&usersFirstName=${urlFirstName}&usersLastName=${urlLastName}`;
+    
+    // Only update state and fetch if URL actually changed
+    if (previousUsersUrlRef.current !== currentUsersUrl) {
+      previousUsersUrlRef.current = currentUsersUrl;
+      
+      // Update local state from URL
+      setIdInput(urlId || '');
+      setEmailInput(urlEmail);
+      setUsernameInput(urlUsername);
+      setFirstNameInput(urlFirstName);
+      setLastNameInput(urlLastName);
+      
+      // Build filters object - explicitly set undefined for empty values to clear filters
+      const filters: UserFilters = {
+        page: urlPage,
+        limit: urlLimit,
+        // Explicitly set undefined for empty values to clear filters in store
+        id: urlId && urlId.trim() ? parseInt(urlId, 10) : undefined,
+        email: urlEmail && urlEmail.trim() ? urlEmail.trim() : undefined,
+        username: urlUsername && urlUsername.trim() ? urlUsername.trim() : undefined,
+        firstName: urlFirstName && urlFirstName.trim() ? urlFirstName.trim() : undefined,
+        lastName: urlLastName && urlLastName.trim() ? urlLastName.trim() : undefined,
+      };
+      
+      fetchUsers(filters);
+    }
+  }, [searchParams, isAdmin, fetchUsers]);
+
+  // Debounced search for text inputs
   useEffect(() => {
     if (!isAdmin) return;
     
     const timer = setTimeout(() => {
-      setUsersSearch(searchQuery);
-      // If search is active, load more users (up to 100) for client-side filtering
-      // If search is empty, reset to normal pagination
-      if (searchQuery.trim()) {
-        // Load maximum users for better search results
-        fetchUsers(1, 100, searchQuery);
-      } else {
-        // Reset to normal pagination
-        fetchUsers(1, 25);
-      }
-    }, 500); // 500ms debounce
+      updateUsersFilters();
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, isAdmin, fetchUsers, setUsersSearch]);
+  }, [emailInput, usernameInput, firstNameInput, lastNameInput, idInput, isAdmin, updateUsersFilters]);
 
   const handlePageChange = (newPage: number) => {
     if (!selectedUserId) return;
@@ -166,6 +270,8 @@ export default function UserWorkflowsOverviewPage() {
     const parsedIsActive = urlIsActive !== null ? (urlIsActive === 'true' ? true : false) : null;
     const parsedWorkflowId = urlWorkflowId ? parseInt(urlWorkflowId, 10) : null;
     const newUrlString = `page=${newPage}&limit=${urlLimit}&isActive=${parsedIsActive ?? ''}&workflowId=${parsedWorkflowId ?? ''}`;
+    
+    // Update previousUrlRef BEFORE router.replace to prevent useEffect from fetching with old params
     previousUrlRef.current = newUrlString;
     
     const params = new URLSearchParams();
@@ -174,11 +280,7 @@ export default function UserWorkflowsOverviewPage() {
     if (urlIsActive) params.set('isActive', urlIsActive);
     if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
 
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/user-workflows${newUrl}`, { scroll: false });
-    
-    // Fetch immediately to update data
-    fetchUserWorkflows(selectedUserId, newPage, urlLimit, parsedIsActive, parsedWorkflowId);
+    router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
@@ -191,6 +293,8 @@ export default function UserWorkflowsOverviewPage() {
     const parsedIsActive = urlIsActive !== null ? (urlIsActive === 'true' ? true : false) : null;
     const parsedWorkflowId = urlWorkflowId ? parseInt(urlWorkflowId, 10) : null;
     const newUrlString = `page=1&limit=${newPageSize}&isActive=${parsedIsActive ?? ''}&workflowId=${parsedWorkflowId ?? ''}`;
+    
+    // Update previousUrlRef BEFORE router.replace to prevent useEffect from fetching with old params
     previousUrlRef.current = newUrlString;
     
     const params = new URLSearchParams();
@@ -199,70 +303,7 @@ export default function UserWorkflowsOverviewPage() {
     if (urlIsActive) params.set('isActive', urlIsActive);
     if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
 
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/user-workflows${newUrl}`, { scroll: false });
-    
-    // Fetch immediately to update data
-    fetchUserWorkflows(selectedUserId, 1, newPageSize, parsedIsActive, parsedWorkflowId);
-  };
-
-  const handleIsActiveChange = (value: string) => {
-    if (!selectedUserId) return;
-    
-    setIsActiveFilter(value);
-    const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
-    const urlWorkflowId = searchParams.get('workflowId');
-    
-    const params = new URLSearchParams();
-    params.set('page', '1'); // Reset to page 1 when filtering
-    params.set('limit', urlLimit.toString());
-    if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
-    if (value && value !== 'all') {
-      params.set('isActive', value);
-    }
-
-    // Update previousUrlRef immediately to prevent duplicate fetches
-    const parsedIsActive = value && value !== 'all' ? value === 'true' : null;
-    const parsedWorkflowId = urlWorkflowId ? parseInt(urlWorkflowId, 10) : null;
-    const newUrlString = `page=1&limit=${urlLimit}&isActive=${parsedIsActive ?? ''}&workflowId=${parsedWorkflowId ?? ''}`;
-    previousUrlRef.current = newUrlString;
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/user-workflows${newUrl}`, { scroll: false });
-    
-    // Fetch immediately to update data
-    fetchUserWorkflows(selectedUserId, 1, urlLimit, parsedIsActive, parsedWorkflowId);
-  };
-
-  const handleWorkflowIdChange = (value: string) => {
-    if (!selectedUserId) return;
-    
-    setWorkflowIdInput(value);
-    const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
-    const urlIsActive = searchParams.get('isActive');
-    
-    const params = new URLSearchParams();
-    params.set('page', '1'); // Reset to page 1 when filtering
-    params.set('limit', urlLimit.toString());
-    if (urlIsActive) params.set('isActive', urlIsActive);
-    if (value) {
-      const workflowIdNum = parseInt(value, 10);
-      if (!isNaN(workflowIdNum)) {
-        params.set('workflowId', workflowIdNum.toString());
-      }
-    }
-
-    // Update previousUrlRef immediately to prevent duplicate fetches
-    const parsedIsActive = urlIsActive !== null ? (urlIsActive === 'true' ? true : false) : null;
-    const parsedWorkflowId = value ? parseInt(value, 10) : null;
-    const newUrlString = `page=1&limit=${urlLimit}&isActive=${parsedIsActive ?? ''}&workflowId=${parsedWorkflowId ?? ''}`;
-    previousUrlRef.current = newUrlString;
-
-    const newUrl = `?${params.toString()}`;
-    router.replace(`/user-workflows${newUrl}`, { scroll: false });
-    
-    // Fetch immediately to update data
-    fetchUserWorkflows(selectedUserId, 1, urlLimit, parsedIsActive, parsedWorkflowId);
+    router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
   };
 
   const handleFiltersChange = () => {
@@ -270,23 +311,106 @@ export default function UserWorkflowsOverviewPage() {
   };
 
   const handleUsersPageChange = (newPage: number) => {
-    fetchUsers(newPage, usersLimit, searchQuery);
+    if (!isAdmin) return;
+    
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('usersPage', newPage.toString());
+    params.set('usersLimit', usersLimit.toString());
+    
+    // Explicitly set or remove parameters based on input values
+    if (idInput.trim()) {
+      params.set('usersId', idInput.trim());
+    } else {
+      params.delete('usersId');
+    }
+    
+    if (emailInput.trim()) {
+      params.set('usersEmail', emailInput.trim());
+    } else {
+      params.delete('usersEmail');
+    }
+    
+    if (usernameInput.trim()) {
+      params.set('usersUsername', usernameInput.trim());
+    } else {
+      params.delete('usersUsername');
+    }
+    
+    if (firstNameInput.trim()) {
+      params.set('usersFirstName', firstNameInput.trim());
+    } else {
+      params.delete('usersFirstName');
+    }
+    
+    if (lastNameInput.trim()) {
+      params.set('usersLastName', lastNameInput.trim());
+    } else {
+      params.delete('usersLastName');
+    }
+
+    // Update previousUsersUrlRef to match the new URL before navigation
+    const newUsersUrlString = `usersPage=${newPage}&usersLimit=${usersLimit}&usersId=${idInput.trim() || ''}&usersEmail=${emailInput.trim()}&usersUsername=${usernameInput.trim()}&usersFirstName=${firstNameInput.trim()}&usersLastName=${lastNameInput.trim()}`;
+    previousUsersUrlRef.current = newUsersUrlString;
+
+        // Build filters and fetch immediately for faster response
+        const filters: UserFilters = {
+      page: newPage,
+      limit: usersLimit,
+      id: idInput.trim() ? parseInt(idInput.trim(), 10) : undefined,
+      email: emailInput.trim() ? emailInput.trim() : undefined,
+      username: usernameInput.trim() ? usernameInput.trim() : undefined,
+      firstName: firstNameInput.trim() ? firstNameInput.trim() : undefined,
+      lastName: lastNameInput.trim() ? lastNameInput.trim() : undefined,
+    };
+    
+    // Fetch immediately to update data faster
+    fetchUsers(filters);
+
+    router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
   };
 
   const handleUsersPageSizeChange = (newPageSize: number) => {
-    fetchUsers(1, newPageSize, searchQuery);
+    if (!isAdmin) return;
+    
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('usersPage', '1');
+    params.set('usersLimit', newPageSize.toString());
+    
+    // Explicitly set or remove parameters based on input values
+    if (idInput.trim()) {
+      params.set('usersId', idInput.trim());
+    } else {
+      params.delete('usersId');
+    }
+    
+    if (emailInput.trim()) {
+      params.set('usersEmail', emailInput.trim());
+    } else {
+      params.delete('usersEmail');
+    }
+    
+    if (usernameInput.trim()) {
+      params.set('usersUsername', usernameInput.trim());
+    } else {
+      params.delete('usersUsername');
+    }
+    
+    if (firstNameInput.trim()) {
+      params.set('usersFirstName', firstNameInput.trim());
+    } else {
+      params.delete('usersFirstName');
+    }
+    
+    if (lastNameInput.trim()) {
+      params.set('usersLastName', lastNameInput.trim());
+    } else {
+      params.delete('usersLastName');
+    }
+
+    router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
   };
 
-  // If search is active, try server-side search first, fallback to client-side
-  // For now, use client-side filtering if API doesn't support search
-  const displayedUsers = searchQuery.trim() 
-    ? users.filter(u => 
-        u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : users
+  const displayedUsers = users
 
   // Calculate statistics
   const activeWorkflows = userWorkflows?.filter(w => w.isActive).length || 0
@@ -339,31 +463,88 @@ export default function UserWorkflowsOverviewPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="search">Search User</Label>
-                <div className="relative">
-                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-4 py-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="usersId" className="text-sm font-medium whitespace-nowrap">
+                    ID:
+                  </Label>
                   <Input
-                    id="search"
-                    placeholder="Email, username, name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    id="usersId"
+                    type="text"
+                    placeholder="User ID"
+                    value={idInput}
+                    onChange={(e) => setIdInput(e.target.value)}
+                    onBlur={updateUsersFilters}
+                    className="w-32"
                   />
                 </div>
-                {usersError && (
-                  <p className="text-xs text-red-500 mt-1">Error: {usersError}</p>
-                )}
-                {!usersLoading && !usersError && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {searchQuery.trim() ? (
-                      <>Found {displayedUsers.length} of {users.length} users</>
-                    ) : (
-                      <>Page {usersPage} of {Math.ceil(usersTotal / usersLimit)} • Total: {usersTotal} users</>
-                    )}
-                  </p>
-                )}
+                
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="usersEmail" className="text-sm font-medium whitespace-nowrap">
+                    Email:
+                  </Label>
+                  <Input
+                    id="usersEmail"
+                    type="text"
+                    placeholder="Email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    className="w-48"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="usersUsername" className="text-sm font-medium whitespace-nowrap">
+                    Username:
+                  </Label>
+                  <Input
+                    id="usersUsername"
+                    type="text"
+                    placeholder="Username"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    className="w-40"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="usersFirstName" className="text-sm font-medium whitespace-nowrap">
+                    First Name:
+                  </Label>
+                  <Input
+                    id="usersFirstName"
+                    type="text"
+                    placeholder="First Name"
+                    value={firstNameInput}
+                    onChange={(e) => setFirstNameInput(e.target.value)}
+                    className="w-40"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="usersLastName" className="text-sm font-medium whitespace-nowrap">
+                    Last Name:
+                  </Label>
+                  <Input
+                    id="usersLastName"
+                    type="text"
+                    placeholder="Last Name"
+                    value={lastNameInput}
+                    onChange={(e) => setLastNameInput(e.target.value)}
+                    className="w-40"
+                  />
+                </div>
               </div>
+              
+              {usersError && (
+                <p className="text-xs text-red-500 mt-1">Error: {usersError}</p>
+              )}
+              {!usersLoading && !usersError && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Page {usersPage} of {Math.ceil(usersTotal / usersLimit)} • Total: {usersTotal} users
+                </p>
+              )}
               {/* Quick user selection cards */}
               {!selectedUserId && displayedUsers.length > 0 && (
                 <div>
@@ -397,8 +578,8 @@ export default function UserWorkflowsOverviewPage() {
                     ))}
                   </div>
                   
-                  {/* Pagination Controls - hide when searching */}
-                  {!selectedUserId && usersTotal > 0 && !searchQuery.trim() && (
+                  {/* Pagination Controls */}
+                  {!selectedUserId && usersTotal > 0 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="users-rows-per-page" className="text-sm font-medium">
@@ -610,38 +791,6 @@ export default function UserWorkflowsOverviewPage() {
                   </p>
                 </CardContent>
               </Card>
-            </div>
-
-            {/* Filters */}
-            <div className="flex items-center gap-4 py-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="isActive" className="text-sm font-medium whitespace-nowrap">
-                  Active:
-                </Label>
-                <Select value={isActiveFilter} onValueChange={handleIsActiveChange}>
-                  <SelectTrigger id="isActive" className="w-32">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="workflowId" className="text-sm font-medium whitespace-nowrap">
-                  Workflow ID:
-                </Label>
-                <Input
-                  id="workflowId"
-                  type="text"
-                  placeholder="Filter by workflow ID"
-                  value={workflowIdInput}
-                  onChange={(e) => handleWorkflowIdChange(e.target.value)}
-                  className="w-32"
-                />
-              </div>
             </div>
 
             {/* Workflows Table */}

@@ -8,7 +8,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
-    const search = searchParams.get('search') || '';
+    const id = searchParams.get('id');
+    const email = searchParams.get('email') || '';
+    const username = searchParams.get('username') || '';
+    const firstName = searchParams.get('firstName') || '';
+    const lastName = searchParams.get('lastName') || '';
+    const phone = searchParams.get('phone') || '';
+    const role = searchParams.get('role');
+    const isActive = searchParams.get('isActive');
 
     // Get authorization token from request
     const authHeader =
@@ -28,8 +35,29 @@ export async function GET(request: NextRequest) {
       limit
     });
 
-    if (search.trim()) {
-      params.append('search', search.trim());
+    if (id) {
+      params.append('id', id);
+    }
+    if (email.trim()) {
+      params.append('email', email.trim());
+    }
+    if (username.trim()) {
+      params.append('username', username.trim());
+    }
+    if (firstName.trim()) {
+      params.append('firstName', firstName.trim());
+    }
+    if (lastName.trim()) {
+      params.append('lastName', lastName.trim());
+    }
+    if (phone.trim()) {
+      params.append('phone', phone.trim());
+    }
+    if (role) {
+      params.append('role', role);
+    }
+    if (isActive) {
+      params.append('isActive', isActive);
     }
 
     const response = await fetch(`${API_URL}/admin/users?${params}`, {

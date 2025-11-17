@@ -4,7 +4,8 @@ import { AuthProvider } from './auth-provider';
 import { User } from '@/interface/User';
 import { NextRequest } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3010";
+// Remove trailing slash from API_URL to avoid double slashes
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3010").replace(/\/+$/, '');
 
 export async function ServerAuthProvider({ children }: { children: React.ReactNode }) {
     const cookieStore = await cookies();
@@ -61,18 +62,41 @@ export async function ServerAuthProvider({ children }: { children: React.ReactNo
             serverHeaders.set('Authorization', `Bearer ${accessToken}`);
 
             // Execute request on server
-            const response = await globalThis.fetch(`${API_URL}/users/profile`, {
+            // Use fetch directly (works in both Node.js and Edge Runtime)
+            const profileUrl = `${API_URL}/users/profile`;
+            
+            // Simple fetch with error handling - works in both Node.js and Edge Runtime
+            const response = await fetch(profileUrl, {
                 headers: serverHeaders,
                 cache: 'no-store',
+            }).catch((fetchError) => {
+                // If fetch fails (network error, API unavailable, etc.), return null
+                // This prevents the error from breaking the app
+                if (process.env.NODE_ENV === 'development') {
+                    console.error('❌ Server: Fetch error getting user data:', fetchError);
+                }
+                return null;
             });
 
-            if (response.ok) {
-                const result = await response.json();
-                // Extract user data from response
-                userData = result.data || result;
+            if (response && response.ok) {
+                try {
+                    const result = await response.json();
+                    // Extract user data from response
+                    userData = result.data || result;
+                } catch (jsonError) {
+                    // If JSON parsing fails, silently continue without user data
+                    if (process.env.NODE_ENV === 'development') {
+                        console.error('❌ Server: JSON parse error:', jsonError);
+                    }
+                }
             }
         } catch (error) {
-            console.error('❌ Server: Error getting user data:', error);
+            // Silently fail - don't break the app if user data fetch fails
+            // This allows the app to work even if the API is temporarily unavailable
+            // Only log in development to avoid cluttering production logs
+            if (process.env.NODE_ENV === 'development') {
+                console.error('❌ Server: Error getting user data:', error);
+            }
         }
     }
 

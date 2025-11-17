@@ -16,10 +16,14 @@ export async function getAllExecutions(
   page: number = 1,
   limit: number = 50,
   filters?: {
+    id?: number;
+    instanceId?: number;
+    workflowId?: string;
+    search?: string;
+    workflowName?: string;
+    n8nId?: string;
     status?: string;
     mode?: string;
-    workflowId?: string;
-    instanceId?: number;
     finished?: boolean;
     hasErrors?: boolean;
     isArchived?: boolean;
@@ -31,11 +35,15 @@ export async function getAllExecutions(
       limit: limit.toString()
     });
 
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.mode) params.append('mode', filters.mode);
-    if (filters?.workflowId) params.append('workflowId', filters.workflowId);
+    if (filters?.id !== undefined) params.append('id', filters.id.toString());
     if (filters?.instanceId !== undefined)
       params.append('instanceId', filters.instanceId.toString());
+    if (filters?.workflowId) params.append('workflowId', filters.workflowId);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.workflowName) params.append('workflowName', filters.workflowName);
+    if (filters?.n8nId) params.append('n8nId', filters.n8nId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.mode) params.append('mode', filters.mode);
     if (filters?.finished !== undefined)
       params.append('finished', filters.finished.toString());
     if (filters?.hasErrors !== undefined)

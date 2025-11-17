@@ -11,10 +11,14 @@ interface ExecutionsStore {
   limit: number;
   totalPages: number;
   filters: {
+    id?: number;
+    instanceId?: number;
+    workflowId?: string;
+    search?: string;
+    workflowName?: string;
+    n8nId?: string;
     status?: string;
     mode?: string;
-    workflowId?: string;
-    instanceId?: number;
     finished?: boolean;
     hasErrors?: boolean;
     isArchived?: boolean;

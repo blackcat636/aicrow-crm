@@ -6,18 +6,63 @@ const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
 ).replace(/\/+$/, '');
 
+export interface UserFilters {
+  page?: number;
+  limit?: number;
+  id?: number;
+  email?: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  role?: 'user' | 'admin';
+  isActive?: boolean;
+}
+
 export async function getAllUsers(
-  page: number = 1,
-  limit: number = 10,
-  search?: string
+  filters: UserFilters = {}
 ): Promise<UsersApiResponse> {
+  const {
+    page = 1,
+    limit = 10,
+    id,
+    email,
+    username,
+    firstName,
+    lastName,
+    phone,
+    role,
+    isActive
+  } = filters;
+
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString()
   });
 
-  if (search && search.trim()) {
-    params.append('search', search.trim());
+  if (id !== undefined) {
+    params.append('id', id.toString());
+  }
+  if (email && email.trim()) {
+    params.append('email', email.trim());
+  }
+  if (username && username.trim()) {
+    params.append('username', username.trim());
+  }
+  if (firstName && firstName.trim()) {
+    params.append('firstName', firstName.trim());
+  }
+  if (lastName && lastName.trim()) {
+    params.append('lastName', lastName.trim());
+  }
+  if (phone && phone.trim()) {
+    params.append('phone', phone.trim());
+  }
+  if (role) {
+    params.append('role', role);
+  }
+  if (isActive !== undefined) {
+    params.append('isActive', isActive.toString());
   }
 
   // Use Next.js API route instead of direct backend call

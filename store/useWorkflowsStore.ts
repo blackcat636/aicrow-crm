@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getAllWorkflows } from '@/lib/api/workflows';
+import { getAllWorkflows, WorkflowFilters } from '@/lib/api/workflows';
 import { Workflow } from '@/interface/Workflow';
 
 interface WorkflowsStore {
@@ -9,14 +9,8 @@ interface WorkflowsStore {
   total: number;
   page: number;
   limit: number;
-  instanceId: number | undefined;
-  active: boolean | undefined;
-  fetchWorkflows: (
-    page?: number, 
-    limit?: number, 
-    instanceId?: number | null, 
-    active?: boolean | null
-  ) => Promise<void>;
+  filters: Omit<WorkflowFilters, 'page' | 'limit'>;
+  fetchWorkflows: (filters?: WorkflowFilters) => Promise<void>;
   updateWorkflowInStore: (updatedWorkflow: Workflow) => void;
 }
 
@@ -27,26 +21,30 @@ export const useWorkflowsStore = create<WorkflowsStore>((set, get) => ({
   total: 0,
   page: 1,
   limit: 20,
-  instanceId: undefined,
-  active: undefined,
+  filters: {},
 
-  fetchWorkflows: async (
-    page?: number, 
-    limit?: number, 
-    instanceId?: number | null, 
-    active?: boolean | null
-  ) => {
+  fetchWorkflows: async (filters: WorkflowFilters = {}) => {
     // Use current state as defaults if params not provided
-    const currentPage = page ?? get().page;
-    const currentLimit = limit ?? get().limit;
-    // For instanceId and active, null means "clear filter" (use undefined for API)
-    // undefined means "use current state"
-    const currentInstanceId = instanceId === null ? undefined : (instanceId !== undefined ? instanceId : get().instanceId);
-    const currentActive = active === null ? undefined : (active !== undefined ? active : get().active);
+    const currentPage = filters.page ?? get().page;
+    const currentLimit = filters.limit ?? get().limit;
+    const currentFilters = get().filters;
+
+    // Merge filters
+    const mergedFilters: WorkflowFilters = {
+      page: currentPage,
+      limit: currentLimit,
+      ...currentFilters,
+      ...filters
+    };
+
+    // Handle null values - convert to undefined to clear filters
+    if (mergedFilters.instanceId === null) mergedFilters.instanceId = undefined;
+    if (mergedFilters.active === null) mergedFilters.active = undefined;
+    if (mergedFilters.availableToUsers === null) mergedFilters.availableToUsers = undefined;
     
     // Enforce API limit of 100
-    const validLimit = Math.min(currentLimit, 100);
-    if (currentLimit > 100) {
+    const validLimit = Math.min(mergedFilters.limit || 20, 100);
+    if ((mergedFilters.limit || 20) > 100) {
       set({ 
         error: 'Limit cannot exceed 100. Maximum limit is 100.',
         isLoading: false 
@@ -54,18 +52,22 @@ export const useWorkflowsStore = create<WorkflowsStore>((set, get) => ({
       return;
     }
 
+    mergedFilters.limit = validLimit;
+
     set({ isLoading: true, error: null });
     try {
-      const response = await getAllWorkflows(currentPage, validLimit, currentInstanceId, currentActive);
+      const response = await getAllWorkflows(mergedFilters);
 
       if ((response.status === 0 || response.status === 200) && response.data) {
+        // Extract filters without page and limit for storage
+        const { page: _, limit: __, ...filterState } = mergedFilters;
+        
         set({
           workflows: response.data.items,
           total: response.data.total,
           page: response.data.page || currentPage,
           limit: response.data.limit || validLimit,
-          instanceId: currentInstanceId,
-          active: currentActive
+          filters: filterState
         });
       } else {
         set({ error: response.message || 'Error loading workflows' });

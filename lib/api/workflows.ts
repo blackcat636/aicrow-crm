@@ -10,12 +10,27 @@ const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
 ).replace(/\/+$/, '');
 
+export interface WorkflowFilters {
+  page?: number;
+  limit?: number;
+  instanceId?: number;
+  active?: boolean;
+  search?: string;
+  availableToUsers?: boolean;
+}
+
 export async function getAllWorkflows(
-  page: number = 1,
-  limit: number = 20,
-  instanceId?: number,
-  active?: boolean
+  filters: WorkflowFilters = {}
 ): Promise<WorkflowsApiResponse> {
+  const {
+    page = 1,
+    limit = 20,
+    instanceId,
+    active,
+    search,
+    availableToUsers
+  } = filters;
+
   try {
     const params = new URLSearchParams();
     params.set('page', page.toString());
@@ -26,30 +41,17 @@ export async function getAllWorkflows(
     if (active !== undefined) {
       params.set('active', active.toString());
     }
+    if (search && search.trim()) {
+      params.set('search', search.trim());
+    }
+    if (availableToUsers !== undefined) {
+      params.set('availableToUsers', availableToUsers.toString());
+    }
     
     const url = `${API_URL}/admin/automations/workflows?${params.toString()}`;
-    console.log('🌐 API Request URL:', url);
-    console.log('📦 API Request params:', {
-      page,
-      limit,
-      instanceId,
-      active,
-      activeType: typeof active
-    });
     
     const response = await fetchWithAuth(url);
     const data = (await response.json()) as WorkflowsApiResponse;
-
-    // Log response for debugging
-    console.log('📥 API Response:', {
-      status: response.status,
-      ok: response.ok,
-      dataStatus: data.status,
-      itemsCount: data.data?.items?.length || 0,
-      total: data.data?.total || 0,
-      firstItemActive: data.data?.items?.[0]?.active,
-      allItemsActive: data.data?.items?.map(item => ({ id: item.id, active: item.active }))
-    });
 
     if (!response.ok) {
       return {
