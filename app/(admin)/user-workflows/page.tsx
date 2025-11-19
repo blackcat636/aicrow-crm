@@ -17,6 +17,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 
+const sanitizeNumericId = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/\D/g, '');
+};
+
 export default function UserWorkflowsOverviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -212,21 +220,37 @@ export default function UserWorkflowsOverviewPage() {
     
     const urlPage = parseInt(searchParams.get('usersPage') || '1', 10);
     const urlLimit = parseInt(searchParams.get('usersLimit') || '25', 10);
-    const urlId = searchParams.get('usersId');
+    const rawId = searchParams.get('usersId');
     const urlEmail = searchParams.get('usersEmail') || '';
     const urlUsername = searchParams.get('usersUsername') || '';
     const urlFirstName = searchParams.get('usersFirstName') || '';
     const urlLastName = searchParams.get('usersLastName') || '';
+
+    const sanitizedId = sanitizeNumericId(rawId);
+
+    // Якщо usersId у URL містить нецифрові символи — виправляємо URL й не виконуємо запит з некоректним значенням
+    if (rawId !== null && sanitizedId !== rawId) {
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (sanitizedId) {
+        params.set('usersId', sanitizedId);
+      } else {
+        params.delete('usersId');
+      }
+
+      router.replace(`/user-workflows?${params.toString()}`, { scroll: false });
+      return;
+    }
     
     // Create URL string for comparison (use empty string for null/undefined values)
-    const currentUsersUrl = `usersPage=${urlPage}&usersLimit=${urlLimit}&usersId=${urlId || ''}&usersEmail=${urlEmail}&usersUsername=${urlUsername}&usersFirstName=${urlFirstName}&usersLastName=${urlLastName}`;
+    const currentUsersUrl = `usersPage=${urlPage}&usersLimit=${urlLimit}&usersId=${sanitizedId || ''}&usersEmail=${urlEmail}&usersUsername=${urlUsername}&usersFirstName=${urlFirstName}&usersLastName=${urlLastName}`;
     
     // Only update state and fetch if URL actually changed
     if (previousUsersUrlRef.current !== currentUsersUrl) {
       previousUsersUrlRef.current = currentUsersUrl;
       
       // Update local state from URL
-      setIdInput(urlId || '');
+      setIdInput(sanitizedId);
       setEmailInput(urlEmail);
       setUsernameInput(urlUsername);
       setFirstNameInput(urlFirstName);
@@ -237,7 +261,7 @@ export default function UserWorkflowsOverviewPage() {
         page: urlPage,
         limit: urlLimit,
         // Explicitly set undefined for empty values to clear filters in store
-        id: urlId && urlId.trim() ? parseInt(urlId, 10) : undefined,
+        id: sanitizedId && sanitizedId.trim() ? parseInt(sanitizedId, 10) : undefined,
         email: urlEmail && urlEmail.trim() ? urlEmail.trim() : undefined,
         username: urlUsername && urlUsername.trim() ? urlUsername.trim() : undefined,
         firstName: urlFirstName && urlFirstName.trim() ? urlFirstName.trim() : undefined,
@@ -474,9 +498,11 @@ export default function UserWorkflowsOverviewPage() {
                     type="text"
                     placeholder="User ID"
                     value={idInput}
-                    onChange={(e) => setIdInput(e.target.value)}
+                    onChange={(e) => setIdInput(sanitizeNumericId(e.target.value))}
                     onBlur={updateUsersFilters}
                     className="w-32"
+                    inputMode="numeric"
+                    pattern="\\d*"
                   />
                 </div>
                 

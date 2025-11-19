@@ -1,7 +1,6 @@
 "use client"
 export const runtime = 'edge';
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import { DataTable } from "@/components/users/data-table"
 import { useUsersStore } from "@/store/useUsersStore"
 import { Input } from "@/components/ui/input"
@@ -16,9 +15,72 @@ import {
 import { CreateUserDialog } from "@/components/users/create-user-dialog"
 import { UserFilters } from '@/lib/api/users'
 
+const sanitizeNumericId = (value?: string) => {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/\D/g, '');
+};
+
+const updateUrlWithFilters = (filters: UserFilters) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const params = new URLSearchParams();
+
+  const page = filters.page ?? 1;
+  const limit = filters.limit ?? 10;
+
+  params.set('page', page.toString());
+  params.set('limit', limit.toString());
+
+  if (filters.id !== undefined) {
+    params.set('id', filters.id.toString());
+  }
+  if (filters.email) {
+    params.set('email', filters.email);
+  }
+  if (filters.username) {
+    params.set('username', filters.username);
+  }
+  if (filters.firstName) {
+    params.set('firstName', filters.firstName);
+  }
+  if (filters.lastName) {
+    params.set('lastName', filters.lastName);
+  }
+  if (filters.phone) {
+    params.set('phone', filters.phone);
+  }
+  if (filters.role) {
+    params.set('role', filters.role);
+  }
+  if (filters.isActive !== undefined) {
+    params.set('isActive', filters.isActive ? 'true' : 'false');
+  }
+
+  const queryString = params.toString();
+  const newUrl = queryString ? `/users?${queryString}` : '/users';
+
+  window.history.replaceState(null, '', newUrl);
+};
+
+type FilterOverrides = Partial<{
+  idInput: string;
+  emailInput: string;
+  usernameInput: string;
+  firstNameInput: string;
+  lastNameInput: string;
+  phoneInput: string;
+  roleFilter: string;
+  isActiveFilter: string;
+  page: number;
+  limit: number;
+}>;
+
 export default function Page() { 
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { users, isLoading, error, total, page, limit, fetchUsers } = useUsersStore()
   
   // Local state for filter inputs
@@ -30,159 +92,119 @@ export default function Page() {
   const [phoneInput, setPhoneInput] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isActiveFilter, setIsActiveFilter] = useState<string>('all');
-  
-  const previousUrlRef = useRef<string>('');
-  const isInitializedRef = useRef(false);
 
-  // Initialize URL with page and limit if not present
-  useEffect(() => {
-    if (!isInitializedRef.current) {
-      const urlPage = searchParams.get('page');
-      const urlLimit = searchParams.get('limit');
-      
-      // If page or limit are missing, add them to URL
-      if (!urlPage || !urlLimit) {
-        const params = new URLSearchParams();
-        params.set('page', urlPage || '1');
-        params.set('limit', urlLimit || '10');
-        
-        // Preserve existing filter params
-        const urlId = searchParams.get('id');
-        const urlEmail = searchParams.get('email');
-        const urlUsername = searchParams.get('username');
-        const urlFirstName = searchParams.get('firstName');
-        const urlLastName = searchParams.get('lastName');
-        const urlPhone = searchParams.get('phone');
-        const urlRole = searchParams.get('role');
-        const urlIsActive = searchParams.get('isActive');
-        
-        if (urlId) params.set('id', urlId);
-        if (urlEmail) params.set('email', urlEmail);
-        if (urlUsername) params.set('username', urlUsername);
-        if (urlFirstName) params.set('firstName', urlFirstName);
-        if (urlLastName) params.set('lastName', urlLastName);
-        if (urlPhone) params.set('phone', urlPhone);
-        if (urlRole) params.set('role', urlRole);
-        if (urlIsActive) params.set('isActive', urlIsActive);
-        
-        const newUrl = `?${params.toString()}`;
-        router.replace(`/users${newUrl}`, { scroll: false });
-        isInitializedRef.current = true;
-        return;
+  const buildFilters = useCallback(
+    (overrides?: FilterOverrides): UserFilters => {
+      const effectivePage = overrides?.page ?? 1;
+      const effectiveLimit = overrides?.limit ?? limit;
+
+      const filters: UserFilters = {
+        page: effectivePage,
+        limit: effectiveLimit,
+        id: undefined,
+        email: undefined,
+        username: undefined,
+        firstName: undefined,
+        lastName: undefined,
+        phone: undefined,
+        role: undefined,
+        isActive: undefined,
+      };
+
+      const idValue = (overrides?.idInput ?? idInput).trim();
+      const sanitizedId = sanitizeNumericId(idValue);
+      if (sanitizedId) {
+        filters.id = parseInt(sanitizedId, 10);
       }
-      isInitializedRef.current = true;
-    }
-  }, [searchParams, router]);
 
-  // Sync URL → Store: Fetch data when URL changes
-  useEffect(() => {
-    if (!isInitializedRef.current) {
-      return;
-    }
+      const trimmedEmail = (overrides?.emailInput ?? emailInput).trim();
+      if (trimmedEmail) {
+        filters.email = trimmedEmail;
+      }
 
-    const urlPage = parseInt(searchParams.get('page') || '1', 10);
-    const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
-    const urlId = searchParams.get('id');
-    const urlEmail = searchParams.get('email') || '';
-    const urlUsername = searchParams.get('username') || '';
-    const urlFirstName = searchParams.get('firstName') || '';
-    const urlLastName = searchParams.get('lastName') || '';
-    const urlPhone = searchParams.get('phone') || '';
-    const urlRole = searchParams.get('role') || 'all';
-    const urlIsActive = searchParams.get('isActive') || 'all';
-    
-    // Update local state from URL
-    setIdInput(urlId || '');
-    setEmailInput(urlEmail);
-    setUsernameInput(urlUsername);
-    setFirstNameInput(urlFirstName);
-    setLastNameInput(urlLastName);
-    setPhoneInput(urlPhone);
-    setRoleFilter(urlRole);
-    setIsActiveFilter(urlIsActive);
-    
-    // Build filters object
-    const filters: UserFilters = {
-      page: urlPage,
-      limit: urlLimit,
-      ...(urlId && { id: parseInt(urlId, 10) }),
-      ...(urlEmail && { email: urlEmail }),
-      ...(urlUsername && { username: urlUsername }),
-      ...(urlFirstName && { firstName: urlFirstName }),
-      ...(urlLastName && { lastName: urlLastName }),
-      ...(urlPhone && { phone: urlPhone }),
-      ...(urlRole !== 'all' && { role: urlRole as 'user' | 'admin' }),
-      ...(urlIsActive !== 'all' && { isActive: urlIsActive === 'true' }),
-    };
+      const trimmedUsername = (overrides?.usernameInput ?? usernameInput).trim();
+      if (trimmedUsername) {
+        filters.username = trimmedUsername;
+      }
 
-    // Create URL string for comparison
-    const currentUrl = `page=${urlPage}&limit=${urlLimit}&id=${urlId || ''}&email=${urlEmail}&username=${urlUsername}&firstName=${urlFirstName}&lastName=${urlLastName}&phone=${urlPhone}&role=${urlRole}&isActive=${urlIsActive}`;
-    
-    // Only fetch if URL actually changed
-    if (previousUrlRef.current !== currentUrl) {
-      previousUrlRef.current = currentUrl;
+      const trimmedFirstName = (overrides?.firstNameInput ?? firstNameInput).trim();
+      if (trimmedFirstName) {
+        filters.firstName = trimmedFirstName;
+      }
+
+      const trimmedLastName = (overrides?.lastNameInput ?? lastNameInput).trim();
+      if (trimmedLastName) {
+        filters.lastName = trimmedLastName;
+      }
+
+      const trimmedPhone = (overrides?.phoneInput ?? phoneInput).trim();
+      if (trimmedPhone) {
+        filters.phone = trimmedPhone;
+      }
+
+      const roleValue = overrides?.roleFilter ?? roleFilter;
+      if (roleValue !== 'all') {
+        filters.role = roleValue as 'user' | 'admin';
+      }
+
+      const statusValue = overrides?.isActiveFilter ?? isActiveFilter;
+      if (statusValue !== 'all') {
+        filters.isActive = statusValue === 'true';
+      }
+
+      return filters;
+    },
+    [
+      idInput,
+      emailInput,
+      usernameInput,
+      firstNameInput,
+      lastNameInput,
+      phoneInput,
+      roleFilter,
+      isActiveFilter,
+      limit,
+    ]
+  );
+
+  const applyFilters = useCallback(
+    (overrides?: FilterOverrides) => {
+      const filters = buildFilters(overrides);
       fetchUsers(filters);
-    }
-  }, [searchParams, fetchUsers]);
+      updateUrlWithFilters(filters);
+    },
+    [buildFilters, fetchUsers]
+  );
 
-  const updateFilters = useCallback(() => {
-    const params = new URLSearchParams();
-    params.set('page', '1'); // Reset to page 1 when filtering
-    params.set('limit', limit.toString());
-    
-    if (idInput.trim()) params.set('id', idInput.trim());
-    if (emailInput.trim()) params.set('email', emailInput.trim());
-    if (usernameInput.trim()) params.set('username', usernameInput.trim());
-    if (firstNameInput.trim()) params.set('firstName', firstNameInput.trim());
-    if (lastNameInput.trim()) params.set('lastName', lastNameInput.trim());
-    if (phoneInput.trim()) params.set('phone', phoneInput.trim());
-    if (roleFilter !== 'all') params.set('role', roleFilter);
-    if (isActiveFilter !== 'all') params.set('isActive', isActiveFilter);
+  // Initial load
+  useEffect(() => {
+    const initialFilters = buildFilters({ page, limit });
+    fetchUsers(initialFilters);
+    updateUrlWithFilters(initialFilters);
+  }, [buildFilters, fetchUsers, page, limit]);
 
-    router.replace(`/users?${params.toString()}`, { scroll: false });
-  }, [idInput, emailInput, usernameInput, firstNameInput, lastNameInput, phoneInput, roleFilter, isActiveFilter, limit, router]);
-
-  // Debounced search for text inputs
+  // Debounced search for text inputs (email, username, first/last name, phone)
   useEffect(() => {
     const timer = setTimeout(() => {
-      updateFilters();
+      applyFilters({ page: 1 });
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [emailInput, usernameInput, firstNameInput, lastNameInput, phoneInput, updateFilters]);
+  }, [
+    emailInput,
+    usernameInput,
+    firstNameInput,
+    lastNameInput,
+    phoneInput,
+    applyFilters,
+  ]);
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams();
-    params.set('page', newPage.toString());
-    params.set('limit', limit.toString());
-    
-    if (idInput.trim()) params.set('id', idInput.trim());
-    if (emailInput.trim()) params.set('email', emailInput.trim());
-    if (usernameInput.trim()) params.set('username', usernameInput.trim());
-    if (firstNameInput.trim()) params.set('firstName', firstNameInput.trim());
-    if (lastNameInput.trim()) params.set('lastName', lastNameInput.trim());
-    if (phoneInput.trim()) params.set('phone', phoneInput.trim());
-    if (roleFilter !== 'all') params.set('role', roleFilter);
-    if (isActiveFilter !== 'all') params.set('isActive', isActiveFilter);
-
-    router.replace(`/users?${params.toString()}`, { scroll: false });
+    applyFilters({ page: newPage });
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    const params = new URLSearchParams();
-    params.set('page', '1');
-    params.set('limit', newPageSize.toString());
-    
-    if (idInput.trim()) params.set('id', idInput.trim());
-    if (emailInput.trim()) params.set('email', emailInput.trim());
-    if (usernameInput.trim()) params.set('username', usernameInput.trim());
-    if (firstNameInput.trim()) params.set('firstName', firstNameInput.trim());
-    if (lastNameInput.trim()) params.set('lastName', lastNameInput.trim());
-    if (phoneInput.trim()) params.set('phone', phoneInput.trim());
-    if (roleFilter !== 'all') params.set('role', roleFilter);
-    if (isActiveFilter !== 'all') params.set('isActive', isActiveFilter);
-
-    router.replace(`/users?${params.toString()}`, { scroll: false });
+    applyFilters({ page: 1, limit: newPageSize });
   };
 
   if (isLoading && users.length === 0) return <div>Loading...</div>;
@@ -214,9 +236,11 @@ export default function Page() {
               type="text"
               placeholder="User ID"
               value={idInput}
-              onChange={(e) => setIdInput(e.target.value)}
-              onBlur={updateFilters}
+              onChange={(e) => setIdInput(sanitizeNumericId(e.target.value))}
+              onBlur={() => applyFilters({ page: 1 })}
               className="w-32"
+              inputMode="numeric"
+              pattern="\\d*"
             />
           </div>
           
@@ -294,7 +318,13 @@ export default function Page() {
             <Label htmlFor="role" className="text-sm font-medium whitespace-nowrap">
               Role:
             </Label>
-            <Select value={roleFilter} onValueChange={(value) => { setRoleFilter(value); updateFilters(); }}>
+            <Select
+              value={roleFilter}
+              onValueChange={(value) => {
+                setRoleFilter(value);
+                applyFilters({ page: 1, roleFilter: value });
+              }}
+            >
               <SelectTrigger id="role" className="w-32">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
@@ -310,7 +340,13 @@ export default function Page() {
             <Label htmlFor="isActive" className="text-sm font-medium whitespace-nowrap">
               Status:
             </Label>
-            <Select value={isActiveFilter} onValueChange={(value) => { setIsActiveFilter(value); updateFilters(); }}>
+            <Select
+              value={isActiveFilter}
+              onValueChange={(value) => {
+                setIsActiveFilter(value);
+                applyFilters({ page: 1, isActiveFilter: value });
+              }}
+            >
               <SelectTrigger id="isActive" className="w-32">
                 <SelectValue placeholder="All" />
               </SelectTrigger>

@@ -18,6 +18,14 @@ import {
 } from '@/components/ui/select'
 import { IconActivity, IconClock, IconCircleCheckFilled, IconCircleXFilled } from '@tabler/icons-react'
 
+const sanitizeNumericId = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/\D/g, '');
+};
+
 export default function ExecutionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -94,18 +102,44 @@ export default function ExecutionsPage() {
 
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const urlId = searchParams.get('id');
-    const urlInstanceId = searchParams.get('instanceId');
+    const rawId = searchParams.get('id');
+    const rawInstanceId = searchParams.get('instanceId');
     const urlWorkflowId = searchParams.get('workflowId');
     const urlSearch = searchParams.get('search') || '';
     const urlStatus = searchParams.get('status');
     const urlFinished = searchParams.get('finished');
     const urlHasErrors = searchParams.get('hasErrors');
     const urlIsArchived = searchParams.get('isArchived');
+
+    const sanitizedId = sanitizeNumericId(rawId);
+    const sanitizedInstanceId = sanitizeNumericId(rawInstanceId);
+
+    // Якщо id / instanceId в URL містять нецифрові символи — виправляємо URL й не виконуємо запит з некоректними значеннями
+    if (
+      (rawId !== null && sanitizedId !== rawId) ||
+      (rawInstanceId !== null && sanitizedInstanceId !== rawInstanceId)
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (sanitizedId) {
+        params.set('id', sanitizedId);
+      } else {
+        params.delete('id');
+      }
+
+      if (sanitizedInstanceId) {
+        params.set('instanceId', sanitizedInstanceId);
+      } else {
+        params.delete('instanceId');
+      }
+
+      router.replace(`/executions?${params.toString()}`, { scroll: false });
+      return;
+    }
     
     // Parse filters from URL
-    const parsedId = urlId ? parseInt(urlId, 10) : undefined;
-    const parsedInstanceId = urlInstanceId ? parseInt(urlInstanceId, 10) : undefined;
+    const parsedId = sanitizedId ? parseInt(sanitizedId, 10) : undefined;
+    const parsedInstanceId = sanitizedInstanceId ? parseInt(sanitizedInstanceId, 10) : undefined;
     const parsedWorkflowId = urlWorkflowId || undefined;
     const parsedSearch = urlSearch || undefined;
     const parsedStatus = urlStatus || undefined;
@@ -236,8 +270,9 @@ export default function ExecutionsPage() {
   // Debounced search for text inputs
   const updateFilters = useCallback(() => {
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const sanitizedId = sanitizeNumericId(idInput.trim());
     const params = buildParamsWithFilters({
-      urlId: idInput.trim() || null,
+      urlId: sanitizedId || null,
       urlSearch: searchInput.trim() || null,
     });
     params.set('page', '1');
@@ -254,9 +289,10 @@ export default function ExecutionsPage() {
   }, [idInput, searchInput, updateFilters]);
 
   const handleIdChange = (value: string) => {
-    setIdInput(value);
+    const sanitized = sanitizeNumericId(value);
+    setIdInput(sanitized);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const params = buildParamsWithFilters({ urlId: value || null });
+    const params = buildParamsWithFilters({ urlId: sanitized || null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
     router.replace(`/executions?${params.toString()}`, { scroll: false });
@@ -287,9 +323,10 @@ export default function ExecutionsPage() {
   };
 
   const handleInstanceIdChange = (value: string) => {
-    setInstanceIdInput(value);
+    const sanitized = sanitizeNumericId(value);
+    setInstanceIdInput(sanitized);
     const urlLimit = parseInt(searchParams.get('limit') || '50', 10);
-    const params = buildParamsWithFilters({ urlInstanceId: value || null });
+    const params = buildParamsWithFilters({ urlInstanceId: sanitized || null });
     params.set('page', '1');
     params.set('limit', urlLimit.toString());
     router.replace(`/executions?${params.toString()}`, { scroll: false });
@@ -430,6 +467,8 @@ export default function ExecutionsPage() {
                   value={idInput}
                   onChange={(e) => handleIdChange(e.target.value)}
                   className="w-32"
+                  inputMode="numeric"
+                  pattern="\\d*"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -443,6 +482,8 @@ export default function ExecutionsPage() {
                   value={instanceIdInput}
                   onChange={(e) => handleInstanceIdChange(e.target.value)}
                   className="w-32"
+                  inputMode="numeric"
+                  pattern="\\d*"
                 />
               </div>
               <div className="flex items-center gap-2">

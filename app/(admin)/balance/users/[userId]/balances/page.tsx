@@ -31,6 +31,26 @@ import { IconCoins, IconUser, IconMail, IconArrowLeft, IconLoader2, IconCalendar
 import Link from 'next/link'
 import { toast } from 'sonner'
 
+const sanitizeNumeric = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+
+  // Allow digits and single dot
+  let result = value.replace(/[^0-9.]/g, '');
+  const firstDotIndex = result.indexOf('.');
+  if (firstDotIndex !== -1) {
+    // Remove all extra dots
+    result =
+      result.slice(0, firstDotIndex + 1) +
+      result
+        .slice(firstDotIndex + 1)
+        .replace(/\./g, '');
+  }
+
+  return result;
+};
+
 export default function UserBalancesPage() {
   const router = useRouter()
   const params = useParams()
@@ -613,7 +633,7 @@ export default function UserBalancesPage() {
                   type="text"
                   placeholder="Min"
                   value={minAmountFilter}
-                  onChange={(e) => setMinAmountFilter(e.target.value)}
+                  onChange={(e) => setMinAmountFilter(sanitizeNumeric(e.target.value))}
                   onBlur={handleFilterChange}
                   className="w-32"
                 />
@@ -627,7 +647,7 @@ export default function UserBalancesPage() {
                   type="text"
                   placeholder="Max"
                   value={maxAmountFilter}
-                  onChange={(e) => setMaxAmountFilter(e.target.value)}
+                  onChange={(e) => setMaxAmountFilter(sanitizeNumeric(e.target.value))}
                   onBlur={handleFilterChange}
                   className="w-32"
                 />

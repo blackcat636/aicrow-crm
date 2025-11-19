@@ -16,6 +16,14 @@ import {
 import { IconSearch } from "@tabler/icons-react"
 import { WorkflowFilters } from '@/lib/api/workflows'
 
+const sanitizeNumericId = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/\D/g, '');
+};
+
 export default function Page() { 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,13 +78,29 @@ export default function Page() {
 
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
     const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
-    const urlInstanceId = searchParams.get('instanceId');
+    const rawInstanceId = searchParams.get('instanceId');
+    const sanitizedInstanceId = sanitizeNumericId(rawInstanceId);
+
+    // If instanceId in URL містить нецифрові символи — виправляємо URL й не робимо запит з некоректним значенням
+    if (rawInstanceId !== null && sanitizedInstanceId !== rawInstanceId) {
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (sanitizedInstanceId) {
+        params.set('instanceId', sanitizedInstanceId);
+      } else {
+        params.delete('instanceId');
+      }
+
+      router.replace(`/workflows?${params.toString()}`, { scroll: false });
+      return;
+    }
+
     const urlSearch = searchParams.get('search') || '';
     const urlActive = searchParams.get('active') || 'all';
     const urlAvailableToUsers = searchParams.get('availableToUsers') || 'all';
     
     // Update local state from URL
-    setInstanceIdInput(urlInstanceId || '');
+    setInstanceIdInput(sanitizedInstanceId);
     setSearchInput(urlSearch);
     setActiveFilter(urlActive);
     setAvailableToUsersFilter(urlAvailableToUsers);
@@ -87,7 +111,7 @@ export default function Page() {
       page: urlPage,
       limit: urlLimit,
       // Explicitly set undefined when empty to clear the filter in store
-      instanceId: urlInstanceId ? parseInt(urlInstanceId, 10) : undefined,
+      instanceId: sanitizedInstanceId ? parseInt(sanitizedInstanceId, 10) : undefined,
       search: urlSearch || undefined,
       // Explicitly set undefined when "all" to clear the filter in store
       active: urlActive !== 'all' ? (urlActive === 'true') : undefined,
@@ -95,7 +119,7 @@ export default function Page() {
     };
 
     // Create URL string for comparison
-    const currentUrl = `page=${urlPage}&limit=${urlLimit}&instanceId=${urlInstanceId || ''}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}`;
+    const currentUrl = `page=${urlPage}&limit=${urlLimit}&instanceId=${sanitizedInstanceId || ''}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}`;
     
     // Only fetch if URL actually changed
     if (previousUrlRef.current !== currentUrl) {
@@ -108,14 +132,15 @@ export default function Page() {
     const params = new URLSearchParams();
     params.set('page', '1'); // Reset to page 1 when filtering
     params.set('limit', limit.toString());
-    
-    if (instanceIdInput.trim()) params.set('instanceId', instanceIdInput.trim());
+
+    const sanitizedInstanceId = sanitizeNumericId(instanceIdInput.trim());
+    if (sanitizedInstanceId) params.set('instanceId', sanitizedInstanceId);
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
 
     // Update previousUrlRef to match the new URL before navigation
-    const newUrlString = `page=1&limit=${limit}&instanceId=${instanceIdInput.trim() || ''}&search=${searchInput.trim()}&active=${activeFilter !== 'all' ? activeFilter : ''}&availableToUsers=${availableToUsersFilter !== 'all' ? availableToUsersFilter : ''}`;
+    const newUrlString = `page=1&limit=${limit}&instanceId=${sanitizedInstanceId || ''}&search=${searchInput.trim()}&active=${activeFilter !== 'all' ? activeFilter : ''}&availableToUsers=${availableToUsersFilter !== 'all' ? availableToUsersFilter : ''}`;
     previousUrlRef.current = newUrlString;
 
     router.replace(`/workflows?${params.toString()}`, { scroll: false });
@@ -134,8 +159,9 @@ export default function Page() {
     const params = new URLSearchParams();
     params.set('page', newPage.toString());
     params.set('limit', limit.toString());
-    
-    if (instanceIdInput.trim()) params.set('instanceId', instanceIdInput.trim());
+
+    const sanitizedInstanceId = sanitizeNumericId(instanceIdInput.trim());
+    if (sanitizedInstanceId) params.set('instanceId', sanitizedInstanceId);
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
@@ -147,8 +173,9 @@ export default function Page() {
     const params = new URLSearchParams();
     params.set('page', '1');
     params.set('limit', newPageSize.toString());
-    
-    if (instanceIdInput.trim()) params.set('instanceId', instanceIdInput.trim());
+
+    const sanitizedInstanceId = sanitizeNumericId(instanceIdInput.trim());
+    if (sanitizedInstanceId) params.set('instanceId', sanitizedInstanceId);
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
@@ -182,9 +209,11 @@ export default function Page() {
               type="text"
               placeholder="Instance ID"
               value={instanceIdInput}
-              onChange={(e) => setInstanceIdInput(e.target.value)}
+              onChange={(e) => setInstanceIdInput(sanitizeNumericId(e.target.value))}
               onBlur={updateFilters}
               className="w-32"
+              inputMode="numeric"
+              pattern="\\d*"
             />
           </div>
           
