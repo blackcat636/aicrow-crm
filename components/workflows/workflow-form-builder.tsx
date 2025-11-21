@@ -1,0 +1,739 @@
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  IconGripVertical,
+  IconPlus,
+  IconTrash,
+  IconAlertTriangle,
+} from "@tabler/icons-react";
+
+import {
+  Workflow,
+  WorkflowFormConfig,
+  WorkflowFormField,
+  WorkflowFormFieldType,
+} from "@/interface/Workflow";
+import { getWorkflowFormConfig, updateWorkflowFormConfig } from "@/lib/api/workflows";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+
+type EditableField = WorkflowFormField;
+
+interface WorkflowFormBuilderProps {
+  workflow: Workflow;
+}
+
+function createEmptyField(type: WorkflowFormFieldType, index: number): EditableField {
+  const idBase = `${type}_field_${Date.now()}_${index}`;
+
+  const base: EditableField = {
+    id: idBase,
+    fieldId: idBase,
+    label: "New field",
+    type,
+    required: false,
+    defaultValue: null,
+    options: type === "dropdown" ? [] : undefined,
+    validation: {},
+    multiple: false,
+    accept: type === "file" ? "image/*,video/*,audio/*,application/pdf" : undefined,
+    order: index,
+  };
+
+  if (type === "boolean") {
+    base.defaultValue = false;
+  }
+
+  return base;
+}
+
+function SortableFieldCard({
+  field,
+  onChange,
+  onDelete,
+}: {
+  field: EditableField;
+  onChange: (updated: EditableField) => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: field.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const handleBasicChange = (key: keyof EditableField, value: unknown) => {
+    onChange({ ...field, [key]: value } as EditableField);
+  };
+
+  const handleValidationChange = (
+    key: keyof NonNullable<EditableField["validation"]>,
+    value: number | string | undefined,
+  ) => {
+    onChange({
+      ...field,
+      validation: {
+        ...(field.validation || {}),
+        [key]: value,
+      },
+    });
+  };
+
+  const handleAddOption = () => {
+    if (field.type !== "dropdown") return;
+    const nextOptions = [...(field.options || [])];
+    const newIndex = nextOptions.length + 1;
+    nextOptions.push({
+      label: `Option ${newIndex}`,
+      value: `option_${newIndex}`,
+    });
+    onChange({ ...field, options: nextOptions });
+  };
+
+  const handleOptionChange = (idx: number, key: "label" | "value", value: string) => {
+    if (field.type !== "dropdown" || !field.options) return;
+    const nextOptions = field.options.map((opt, index) =>
+      index === idx ? { ...opt, [key]: value } : opt,
+    );
+    onChange({ ...field, options: nextOptions });
+  };
+
+  const handleRemoveOption = (idx: number) => {
+    if (field.type !== "dropdown" || !field.options) return;
+    const nextOptions = field.options.filter((_, index) => index !== idx);
+    onChange({ ...field, options: nextOptions });
+  };
+
+  const typeLabel: Record<WorkflowFormFieldType, string> = {
+    text: "Text",
+    textarea: "Textarea",
+    number: "Number",
+    boolean: "Boolean",
+    dropdown: "Dropdown",
+    file: "File Upload",
+    date: "Date",
+    datetime: "DateTime",
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className="mb-3">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="flex h-8 w-8 items-center justify-center rounded-md border bg-muted text-muted-foreground hover:bg-muted/80"
+          >
+            <IconGripVertical className="h-4 w-4" />
+            <span className="sr-only">Drag to reorder</span>
+          </button>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">
+              {field.label || "Untitled field"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {typeLabel[field.type]} • ID: {field.fieldId}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {field.required && (
+            <Badge variant="outline" className="text-xs">
+              Required
+            </Badge>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-destructive"
+            onClick={onDelete}
+          >
+            <IconTrash className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor={`${field.id}-label`}>Label</Label>
+            <Input
+              id={`${field.id}-label`}
+              value={field.label}
+              onChange={(e) => handleBasicChange("label", e.target.value)}
+              placeholder="Field label"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${field.id}-fieldId`}>Field ID</Label>
+            <Input
+              id={`${field.id}-fieldId`}
+              value={field.fieldId}
+              onChange={(e) => handleBasicChange("fieldId", e.target.value)}
+              placeholder="internal_id_used_in_payload"
+            />
+            <p className="text-xs text-muted-foreground">
+              Використовується як ключ у JSON-payload. Бажано тільки латинські
+              літери, цифри та підкреслення.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor={`${field.id}-description`}>Description</Label>
+            <Textarea
+              id={`${field.id}-description`}
+              value={field.description || ""}
+              onChange={(e) => handleBasicChange("description", e.target.value)}
+              rows={2}
+              placeholder="Short description for user"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${field.id}-hint`}>Hint</Label>
+            <Input
+              id={`${field.id}-hint`}
+              value={field.hint || ""}
+              onChange={(e) => handleBasicChange("hint", e.target.value)}
+              placeholder="Optional hint / placeholder"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`${field.id}-required`}
+              checked={field.required}
+              onCheckedChange={(checked) => handleBasicChange("required", checked)}
+            />
+            <Label htmlFor={`${field.id}-required`}>Required</Label>
+          </div>
+
+          {(field.type === "file" || field.type === "dropdown") && (
+            <div className="flex items-center space-x-2">
+              <Switch
+                id={`${field.id}-multiple`}
+                checked={field.multiple || false}
+                onCheckedChange={(checked) => handleBasicChange("multiple", checked)}
+              />
+              <Label htmlFor={`${field.id}-multiple`}>Allow multiple</Label>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Default value</Label>
+          {field.type === "textarea" ? (
+            <Textarea
+              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
+              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
+              rows={3}
+              placeholder="Default text"
+            />
+          ) : field.type === "number" ? (
+            <Input
+              type="number"
+              value={typeof field.defaultValue === "number" ? field.defaultValue : ""}
+              onChange={(e) =>
+                handleBasicChange(
+                  "defaultValue",
+                  e.target.value === "" ? null : Number(e.target.value),
+                )
+              }
+              placeholder="Default number"
+            />
+          ) : field.type === "boolean" ? (
+            <div className="flex items-center space-x-2">
+              <Switch
+                id={`${field.id}-default-boolean`}
+                checked={Boolean(field.defaultValue)}
+                onCheckedChange={(checked) =>
+                  handleBasicChange("defaultValue", checked)
+                }
+              />
+              <Label htmlFor={`${field.id}-default-boolean`}>
+                {Boolean(field.defaultValue) ? "True" : "False"}
+              </Label>
+            </div>
+          ) : field.type === "date" || field.type === "datetime" ? (
+            <Input
+              type={field.type === "date" ? "date" : "datetime-local"}
+              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
+              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
+            />
+          ) : field.type === "dropdown" ? (
+            <Select
+              value={
+                typeof field.defaultValue === "string"
+                  ? field.defaultValue
+                  : undefined
+              }
+              onValueChange={(value) => handleBasicChange("defaultValue", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No default option" />
+              </SelectTrigger>
+              <SelectContent>
+                {(field.options || []).map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
+              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
+              placeholder="Default value"
+            />
+          )}
+        </div>
+
+        {/* Validation section */}
+        <div className="space-y-2">
+          <Label>Validation</Label>
+          {field.type === "number" && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor={`${field.id}-min`} className="text-xs">
+                  Min
+                </Label>
+                <Input
+                  id={`${field.id}-min`}
+                  type="number"
+                  value={field.validation?.min ?? ""}
+                  onChange={(e) =>
+                    handleValidationChange(
+                      "min",
+                      e.target.value === "" ? undefined : Number(e.target.value),
+                    )
+                  }
+                  placeholder="Minimum value"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`${field.id}-max`} className="text-xs">
+                  Max
+                </Label>
+                <Input
+                  id={`${field.id}-max`}
+                  type="number"
+                  value={field.validation?.max ?? ""}
+                  onChange={(e) =>
+                    handleValidationChange(
+                      "max",
+                      e.target.value === "" ? undefined : Number(e.target.value),
+                    )
+                  }
+                  placeholder="Maximum value"
+                />
+              </div>
+            </div>
+          )}
+
+          {(field.type === "text" || field.type === "textarea") && (
+            <div className="space-y-1">
+              <Label htmlFor={`${field.id}-regex`} className="text-xs">
+                Regex pattern
+              </Label>
+              <Input
+                id={`${field.id}-regex`}
+                value={field.validation?.regex ?? ""}
+                onChange={(e) => handleValidationChange("regex", e.target.value)}
+                placeholder="e.g. ^[A-Za-z0-9_]+$"
+              />
+            </div>
+          )}
+
+          {field.type === "file" && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor={`${field.id}-maxFileSizeMb`} className="text-xs">
+                  Max file size (MB)
+                </Label>
+                <Input
+                  id={`${field.id}-maxFileSizeMb`}
+                  type="number"
+                  value={field.validation?.maxFileSizeMb ?? ""}
+                  onChange={(e) =>
+                    handleValidationChange(
+                      "maxFileSizeMb",
+                      e.target.value === ""
+                        ? undefined
+                        : Number(e.target.value),
+                    )
+                  }
+                  placeholder="e.g. 10"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`${field.id}-accept`} className="text-xs">
+                  Allowed MIME types
+                </Label>
+                <Input
+                  id={`${field.id}-accept`}
+                  value={field.accept || ""}
+                  onChange={(e) => handleBasicChange("accept", e.target.value)}
+                  placeholder="image/*,video/*,audio/*,application/pdf"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Dropdown options */}
+        {field.type === "dropdown" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Options</Label>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddOption}>
+                <IconPlus className="mr-1 h-4 w-4" />
+                Add option
+              </Button>
+            </div>
+            {(field.options || []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Ще немає жодної опції. Додайте хоча б одну.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(field.options || []).map((opt, idx) => (
+                  <div
+                    key={`${field.id}-opt-${idx}`}
+                    className="grid grid-cols-[1fr,1fr,auto] items-center gap-2"
+                  >
+                    <Input
+                      value={opt.label}
+                      onChange={(e) =>
+                        handleOptionChange(idx, "label", e.target.value)
+                      }
+                      placeholder="Label"
+                    />
+                    <Input
+                      value={opt.value}
+                      onChange={(e) =>
+                        handleOptionChange(idx, "value", e.target.value)
+                      }
+                      placeholder="Value (used in JSON)"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive"
+                      onClick={() => handleRemoveOption(idx)}
+                    >
+                      <IconTrash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [fields, setFields] = useState<EditableField[]>([]);
+  const [version, setVersion] = useState<number>(1);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {}),
+    useSensor(TouchSensor, {}),
+    useSensor(KeyboardSensor, {}),
+  );
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      setIsLoading(true);
+      try {
+        const response = await getWorkflowFormConfig(workflow.id);
+        if ((response.status === 200 || response.status === 0) && response.data) {
+          const sorted = [...response.data.fields].sort(
+            (a, b) => (a.order ?? 0) - (b.order ?? 0),
+          );
+          setFields(sorted);
+          setVersion(response.data.version || 1);
+        } else if (response.status !== 404) {
+          toast.error(
+            response.message || "Failed to load form configuration for workflow",
+          );
+        }
+      } catch (error) {
+        console.error("Error loading form config:", error);
+        toast.error("Error loading form configuration");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConfig();
+  }, [workflow.id]);
+
+  const handleAddField = (type: WorkflowFormFieldType) => {
+    setFields((prev) => {
+      const index = prev.length;
+      const newField = createEmptyField(type, index);
+      return [...prev, newField];
+    });
+  };
+
+  const handleFieldChange = (id: string, updated: EditableField) => {
+    setFields((prev) => prev.map((f) => (f.id === id ? updated : f)));
+  };
+
+  const handleFieldDelete = (id: string) => {
+    setFields((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setFields((prev) => {
+      const oldIndex = prev.findIndex((f) => f.id === active.id);
+      const newIndex = prev.findIndex((f) => f.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      return reordered.map((f, index) => ({ ...f, order: index }));
+    });
+  };
+
+  const sortableIds = useMemo(() => fields.map((f) => f.id), [fields]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const normalizedFields = fields.map((field, index) => ({
+        ...field,
+        order: index,
+      }));
+
+      const payload: WorkflowFormConfig = {
+        version: (version || 0) + 1,
+        fields: normalizedFields,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const result = await updateWorkflowFormConfig(workflow.id, payload);
+
+      if (result.status === 200 || result.status === 0) {
+        toast.success("Form configuration saved successfully");
+        if (result.data) {
+          const sorted = [...result.data.fields].sort(
+            (a, b) => (a.order ?? 0) - (b.order ?? 0),
+          );
+          setFields(sorted);
+          setVersion(result.data.version);
+        } else {
+          setVersion(payload.version);
+        }
+      } else {
+        toast.error(result.message || "Failed to save form configuration");
+      }
+    } catch (error) {
+      console.error("Error saving form configuration:", error);
+      toast.error("Error saving form configuration");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setFields([]);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Form Builder</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Налаштуйте форму, яку користувач заповнює перед запуском workflow.
+            Значення полів будуть відправлені у workflow API як JSON-об&apos;єкт
+            із ключами за Field ID.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Label className="text-xs text-muted-foreground">
+              Додати поле:
+            </Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("text")}
+            >
+              Text
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("textarea")}
+            >
+              Textarea
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("number")}
+            >
+              Number
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("boolean")}
+            >
+              Boolean
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("dropdown")}
+            >
+              Dropdown
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("file")}
+            >
+              File Upload
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("date")}
+            >
+              Date
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("datetime")}
+            >
+              DateTime
+            </Button>
+          </div>
+
+          {fields.length === 0 && !isLoading && (
+            <div className="flex items-center gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              <IconAlertTriangle className="h-4 w-4" />
+              <span>
+                Для цього workflow ще не налаштована форма. Користувачу буде
+                показано лише поле Prompt або нічого (залежно від логіки
+                виконання).
+              </span>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+              Завантаження конфігурації форми...
+            </div>
+          ) : (
+            <DndContext
+              collisionDetection={closestCenter}
+              sensors={sensors}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sortableIds}
+                strategy={verticalListSortingStrategy}
+              >
+                {fields.map((field) => (
+                  <SortableFieldCard
+                    key={field.id}
+                    field={field}
+                    onChange={(updated) => handleFieldChange(field.id, updated)}
+                    onDelete={() => handleFieldDelete(field.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+
+          <div className="flex items-center justify-between border-t pt-4">
+            <div className="text-xs text-muted-foreground">
+              Поточна версія форми: v{version}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={isSaving || fields.length === 0}
+              >
+                Очистити
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save configuration"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+

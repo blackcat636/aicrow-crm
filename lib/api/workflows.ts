@@ -2,7 +2,8 @@ import { fetchWithAuth } from '../api';
 import {
   WorkflowsApiResponse,
   WorkflowApiResponse,
-  WorkflowUpdateRequest
+  WorkflowUpdateRequest,
+  WorkflowFormConfig
 } from '@/interface/Workflow';
 
 // Remove trailing slash from API_URL to avoid double slashes
@@ -162,6 +163,94 @@ export async function getWorkflowById(
         createdAt: '',
         updatedAt: ''
       }
+    };
+  }
+}
+
+export interface WorkflowFormConfigApiResponse {
+  status: number;
+  data: WorkflowFormConfig | null;
+  message?: string;
+}
+
+export async function getWorkflowFormConfig(
+  id: number
+): Promise<WorkflowFormConfigApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/workflows/${id}/form`
+    );
+
+    const data = (await response.json()) as WorkflowFormConfigApiResponse;
+
+    if (!response.ok) {
+      return {
+        status: response.status,
+        message: data.message || 'Failed to fetch workflow form configuration',
+        data: null
+      };
+    }
+
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    }
+
+    return {
+      status: data.status || 500,
+      message: data.message || 'Failed to fetch workflow form configuration',
+      data: null
+    };
+  } catch (error) {
+    console.error('❌ API: Error in getWorkflowFormConfig:', error);
+    return {
+      status: 0,
+      message: 'Network error',
+      data: null
+    };
+  }
+}
+
+export async function updateWorkflowFormConfig(
+  id: number,
+  formConfig: WorkflowFormConfig
+): Promise<WorkflowFormConfigApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/workflows/${id}/form`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formConfig)
+      }
+    );
+
+    const data = (await response.json()) as WorkflowFormConfigApiResponse;
+
+    if (!response.ok) {
+      return {
+        status: response.status,
+        message: data.message || 'Failed to update workflow form configuration',
+        data: null
+      };
+    }
+
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    }
+
+    return {
+      status: data.status || 500,
+      message: data.message || 'Failed to update workflow form configuration',
+      data: null
+    };
+  } catch (error) {
+    console.error('❌ API: Error in updateWorkflowFormConfig:', error);
+    return {
+      status: 0,
+      message: 'Network error',
+      data: null
     };
   }
 }

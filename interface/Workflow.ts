@@ -44,6 +44,58 @@ export interface WorkflowConnections {
   };
 }
 
+export type WorkflowFormFieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'boolean'
+  | 'dropdown'
+  | 'file'
+  | 'date'
+  | 'datetime';
+
+export interface WorkflowFormFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface WorkflowFormFieldValidation {
+  min?: number;
+  max?: number;
+  regex?: string;
+  maxFileSizeMb?: number;
+}
+
+export interface WorkflowFormField {
+  /** Internal unique identifier for drag-and-drop and editing */
+  id: string;
+  /** Field ID used as key in input payload */
+  fieldId: string;
+  label: string;
+  type: WorkflowFormFieldType;
+  description?: string;
+  hint?: string;
+  required: boolean;
+  /** Default value in a type-appropriate format */
+  defaultValue?: string | number | boolean | null;
+  /** Dropdown options (only for dropdown type) */
+  options?: WorkflowFormFieldOption[];
+  /** Validation rules depending on field type */
+  validation?: WorkflowFormFieldValidation;
+  /** Allow multiple selection / multiple files where applicable */
+  multiple?: boolean;
+  /** File MIME filter (e.g. image/*,application/pdf) for file uploads */
+  accept?: string;
+  /** Explicit order index for stable rendering */
+  order: number;
+}
+
+export interface WorkflowFormConfig {
+  version: number;
+  fields: WorkflowFormField[];
+  updatedAt?: string;
+}
+
 export interface Workflow {
   id: number;
   instanceId: number;
@@ -61,6 +113,8 @@ export interface Workflow {
   nodesData?: WorkflowNode[];
   connections: number;
   connectionsData?: WorkflowConnections;
+  /** Optional dynamic form configuration for workflow execution */
+  formConfig?: WorkflowFormConfig | null;
   n8nCreatedAt: string;
   n8nUpdatedAt: string;
   syncedAt: string;
