@@ -208,8 +208,7 @@ function SortableFieldCard({
               placeholder="internal_id_used_in_payload"
             />
             <p className="text-xs text-muted-foreground">
-              Використовується як ключ у JSON-payload. Бажано тільки латинські
-              літери, цифри та підкреслення.
+              Used as key in JSON payload. Only Latin letters, numbers, and underscores are recommended.
             </p>
           </div>
         </div>
@@ -431,7 +430,7 @@ function SortableFieldCard({
             </div>
             {(field.options || []).length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Ще немає жодної опції. Додайте хоча б одну.
+                No options yet. Add at least one.
               </p>
             ) : (
               <div className="space-y-2">
@@ -594,14 +593,13 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Налаштуйте форму, яку користувач заповнює перед запуском workflow.
-            Значення полів будуть відправлені у workflow API як JSON-об&apos;єкт
-            із ключами за Field ID.
+            Configure the form that users fill out before running the workflow.
+            Field values will be sent to the workflow API as a JSON object with keys based on Field ID.
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
             <Label className="text-xs text-muted-foreground">
-              Додати поле:
+              Add field:
             </Label>
             <Button
               type="button"
@@ -673,16 +671,14 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
             <div className="flex items-center gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
               <IconAlertTriangle className="h-4 w-4" />
               <span>
-                Для цього workflow ще не налаштована форма. Користувачу буде
-                показано лише поле Prompt або нічого (залежно від логіки
-                виконання).
+                No form has been configured for this workflow yet. Users will only see the Prompt field or nothing (depending on execution logic).
               </span>
             </div>
           )}
 
           {isLoading ? (
             <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-              Завантаження конфігурації форми...
+              Loading form configuration...
             </div>
           ) : (
             <DndContext
@@ -708,7 +704,7 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
 
           <div className="flex items-center justify-between border-t pt-4">
             <div className="text-xs text-muted-foreground">
-              Поточна версія форми: v{version}
+              Current form version: v{version}
             </div>
             <div className="flex gap-2">
               <Button
@@ -718,7 +714,7 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
                 onClick={handleReset}
                 disabled={isSaving || fields.length === 0}
               >
-                Очистити
+                Clear
               </Button>
               <Button
                 type="button"
