@@ -254,7 +254,7 @@ function SortableFieldCard({
             <Label htmlFor={`${field.id}-required`}>Required</Label>
           </div>
 
-          {(field.type === "file" || field.type === "dropdown") && (
+          {field.type === "file" && (
             <div className="flex items-center space-x-2">
               <Switch
                 id={`${field.id}-multiple`}
