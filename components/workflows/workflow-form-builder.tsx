@@ -660,9 +660,65 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => handleAddField("file")}
+              onClick={() => handleAddField("text")}
             >
-              File Upload
+              Text
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("textarea")}
+            >
+              Textarea
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("url")}
+            >
+              URL
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("email")}
+            >
+              Email
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("enum")}
+            >
+              Enum
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("number")}
+            >
+              Number
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("boolean")}
+            >
+              Boolean
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("dropdown")}
+            >
+              Dropdown
             </Button>
           </div>
 
