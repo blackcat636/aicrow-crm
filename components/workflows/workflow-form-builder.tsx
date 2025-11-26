@@ -277,14 +277,18 @@ function SortableFieldCard({
             />
           ) : field.type === "number" ? (
             <Input
-              type="number"
-              value={typeof field.defaultValue === "number" ? field.defaultValue : ""}
-              onChange={(e) =>
-                handleBasicChange(
-                  "defaultValue",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
+              type="text"
+              value={typeof field.defaultValue === "number" ? String(field.defaultValue) : (typeof field.defaultValue === "string" ? field.defaultValue : "")}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow empty string or valid number
+                if (value === "") {
+                  handleBasicChange("defaultValue", null);
+                } else {
+                  // Store as string in UI, but will be converted to number on save
+                  handleBasicChange("defaultValue", value);
+                }
+              }}
               placeholder="Default number"
             />
           ) : field.type === "boolean" ? (
@@ -361,41 +365,8 @@ function SortableFieldCard({
         <div className="space-y-2">
           <Label>Validation</Label>
           {field.type === "number" && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor={`${field.id}-min`} className="text-xs">
-                  Min
-                </Label>
-                <Input
-                  id={`${field.id}-min`}
-                  type="number"
-                  value={field.validation?.min ?? ""}
-                  onChange={(e) =>
-                    handleValidationChange(
-                      "min",
-                      e.target.value === "" ? undefined : Number(e.target.value),
-                    )
-                  }
-                  placeholder="Minimum value"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor={`${field.id}-max`} className="text-xs">
-                  Max
-                </Label>
-                <Input
-                  id={`${field.id}-max`}
-                  type="number"
-                  value={field.validation?.max ?? ""}
-                  onChange={(e) =>
-                    handleValidationChange(
-                      "max",
-                      e.target.value === "" ? undefined : Number(e.target.value),
-                    )
-                  }
-                  placeholder="Maximum value"
-                />
-              </div>
+            <div className="text-xs text-muted-foreground">
+              Number format will be validated automatically
             </div>
           )}
 
@@ -600,6 +571,19 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
             options: normalizedOptions,
           };
         }
+        
+        // For number fields, convert string defaultValue to number
+        if (field.type === "number" && field.defaultValue !== null && field.defaultValue !== undefined) {
+          const numValue = typeof field.defaultValue === "string" 
+            ? (field.defaultValue === "" ? null : Number(field.defaultValue))
+            : field.defaultValue;
+          return {
+            ...field,
+            order: index,
+            defaultValue: numValue,
+          };
+        }
+        
         return {
           ...field,
           order: index,
