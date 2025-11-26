@@ -48,9 +48,9 @@ export async function getAllWorkflows(
     if (availableToUsers !== undefined) {
       params.set('availableToUsers', availableToUsers.toString());
     }
-    
+
     const url = `${API_URL}/admin/automations/workflows?${params.toString()}`;
-    
+
     const response = await fetchWithAuth(url);
     const data = (await response.json()) as WorkflowsApiResponse;
 
@@ -178,7 +178,7 @@ export async function getWorkflowFormConfig(
 ): Promise<WorkflowFormConfigApiResponse> {
   try {
     const response = await fetchWithAuth(
-      `${API_URL}/admin/automations/workflows/${id}/form`
+      `${API_URL}/admin/automations/workflows/${id}/webhook-template`
     );
 
     const data = (await response.json()) as WorkflowFormConfigApiResponse;
@@ -216,7 +216,7 @@ export async function updateWorkflowFormConfig(
 ): Promise<WorkflowFormConfigApiResponse> {
   try {
     const response = await fetchWithAuth(
-      `${API_URL}/admin/automations/workflows/${id}/form`,
+      `${API_URL}/admin/automations/workflows/${id}/webhook-template`,
       {
         method: 'PUT',
         headers: {
