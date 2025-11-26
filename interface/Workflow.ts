@@ -52,7 +52,10 @@ export type WorkflowFormFieldType =
   | 'dropdown'
   | 'file'
   | 'date'
-  | 'datetime';
+  | 'datetime'
+  | 'url'
+  | 'email'
+  | 'enum';
 
 export interface WorkflowFormFieldOption {
   label: string;

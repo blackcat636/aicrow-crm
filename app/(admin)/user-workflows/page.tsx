@@ -270,7 +270,7 @@ export default function UserWorkflowsOverviewPage() {
       
       fetchUsers(filters);
     }
-  }, [searchParams, isAdmin, fetchUsers]);
+  }, [searchParams, isAdmin, fetchUsers, router]);
 
   // Debounced search for text inputs
   useEffect(() => {

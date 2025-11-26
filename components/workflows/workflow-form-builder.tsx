@@ -141,6 +141,9 @@ function SortableFieldCard({
   const typeLabel: Record<WorkflowFormFieldType, string> = {
     text: "Text",
     textarea: "Textarea",
+    url: "URL",
+    email: "Email",
+    enum: "Enum",
     number: "Number",
     boolean: "Boolean",
     dropdown: "Dropdown",
@@ -317,6 +320,26 @@ function SortableFieldCard({
                 ))}
               </SelectContent>
             </Select>
+          ) : field.type === "url" ? (
+            <Input
+              type="url"
+              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
+              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
+              placeholder="https://example.com"
+            />
+          ) : field.type === "email" ? (
+            <Input
+              type="email"
+              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
+              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
+              placeholder="user@example.com"
+            />
+          ) : field.type === "enum" ? (
+            <Input
+              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
+              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
+              placeholder="Enum value"
+            />
           ) : (
             <Input
               value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
@@ -368,7 +391,7 @@ function SortableFieldCard({
             </div>
           )}
 
-          {(field.type === "text" || field.type === "textarea") && (
+          {(field.type === "text" || field.type === "textarea" || field.type === "enum") && (
             <div className="space-y-1">
               <Label htmlFor={`${field.id}-regex`} className="text-xs">
                 Regex pattern
@@ -379,6 +402,14 @@ function SortableFieldCard({
                 onChange={(e) => handleValidationChange("regex", e.target.value)}
                 placeholder="e.g. ^[A-Za-z0-9_]+$"
               />
+            </div>
+          )}
+
+          {(field.type === "url" || field.type === "email") && (
+            <div className="text-xs text-muted-foreground">
+              {field.type === "url"
+                ? "URL format will be validated automatically"
+                : "Email format will be validated automatically"}
             </div>
           )}
 
@@ -444,14 +475,14 @@ function SortableFieldCard({
                       onChange={(e) =>
                         handleOptionChange(idx, "label", e.target.value)
                       }
-                      placeholder="Label"
+                      placeholder="Label (displayed to user)"
                     />
                     <Input
                       value={opt.value}
                       onChange={(e) =>
                         handleOptionChange(idx, "value", e.target.value)
                       }
-                      placeholder="Value (used in JSON)"
+                      placeholder="Value (sent in JSON payload)"
                     />
                     <Button
                       type="button"
@@ -616,6 +647,30 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
               onClick={() => handleAddField("textarea")}
             >
               Textarea
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("url")}
+            >
+              URL
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("email")}
+            >
+              Email
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("enum")}
+            >
+              Enum
             </Button>
             <Button
               type="button"
