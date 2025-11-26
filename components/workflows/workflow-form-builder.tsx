@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -31,7 +31,7 @@ import {
   WorkflowFormField,
   WorkflowFormFieldType,
 } from "@/interface/Workflow";
-import { getWorkflowFormConfig, updateWorkflowFormConfig } from "@/lib/api/workflows";
+import { updateWorkflowFormConfig } from "@/lib/api/workflows";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,16 +55,17 @@ interface WorkflowFormBuilderProps {
 }
 
 function createEmptyField(type: WorkflowFormFieldType, index: number): EditableField {
-  const idBase = `${type}_field_${Date.now()}_${index}`;
+  // Use timestamp + random number + index to ensure uniqueness
+  const uniqueId = `${type}_field_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${index}`;
 
   const base: EditableField = {
-    id: idBase,
-    fieldId: idBase,
+    id: uniqueId,
+    fieldId: uniqueId,
     label: "New field",
     type,
     required: false,
     defaultValue: null,
-    options: type === "dropdown" ? [] : undefined,
+    options: type === "dropdown" ? [{ label: "Option 1", value: "" }] : undefined,
     validation: {},
     multiple: false,
     accept: type === "file" ? "image/*,video/*,audio/*,application/pdf" : undefined,
@@ -119,7 +120,7 @@ function SortableFieldCard({
     const newIndex = nextOptions.length + 1;
     nextOptions.push({
       label: `Option ${newIndex}`,
-      value: `option_${newIndex}`,
+      value: "",
     });
     onChange({ ...field, options: nextOptions });
   };
@@ -134,7 +135,12 @@ function SortableFieldCard({
 
   const handleRemoveOption = (idx: number) => {
     if (field.type !== "dropdown" || !field.options) return;
-    const nextOptions = field.options.filter((_, index) => index !== idx);
+    const nextOptions = field.options
+      .filter((_, index) => index !== idx)
+      .map((opt, index) => ({
+        ...opt,
+        label: `Option ${index + 1}`,
+      }));
     onChange({ ...field, options: nextOptions });
   };
 
@@ -303,7 +309,7 @@ function SortableFieldCard({
           ) : field.type === "dropdown" ? (
             <Select
               value={
-                typeof field.defaultValue === "string"
+                typeof field.defaultValue === "string" && field.defaultValue !== ""
                   ? field.defaultValue
                   : undefined
               }
@@ -313,11 +319,13 @@ function SortableFieldCard({
                 <SelectValue placeholder="No default option" />
               </SelectTrigger>
               <SelectContent>
-                {(field.options || []).map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
+                {(field.options || [])
+                  .filter((opt) => opt.value && opt.value.trim() !== "")
+                  .map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.value}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           ) : field.type === "url" ? (
@@ -449,40 +457,34 @@ function SortableFieldCard({
           )}
         </div>
 
-        {/* Dropdown options */}
+        {/* Dropdown values */}
         {field.type === "dropdown" && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Options</Label>
+              <Label>Values</Label>
               <Button type="button" variant="outline" size="sm" onClick={handleAddOption}>
                 <IconPlus className="mr-1 h-4 w-4" />
-                Add option
+                Add value
               </Button>
             </div>
             {(field.options || []).length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No options yet. Add at least one.
+                No values yet. Add at least one.
               </p>
             ) : (
               <div className="space-y-2">
                 {(field.options || []).map((opt, idx) => (
                   <div
                     key={`${field.id}-opt-${idx}`}
-                    className="grid grid-cols-[1fr,1fr,auto] items-center gap-2"
+                    className="flex items-center gap-2"
                   >
-                    <Input
-                      value={opt.label}
-                      onChange={(e) =>
-                        handleOptionChange(idx, "label", e.target.value)
-                      }
-                      placeholder="Label (displayed to user)"
-                    />
                     <Input
                       value={opt.value}
                       onChange={(e) =>
                         handleOptionChange(idx, "value", e.target.value)
                       }
-                      placeholder="Value (sent in JSON payload)"
+                      placeholder="Enter value"
+                      className="flex-1"
                     />
                     <Button
                       type="button"
@@ -505,7 +507,6 @@ function SortableFieldCard({
 }
 
 export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fields, setFields] = useState<EditableField[]>([]);
   const [version, setVersion] = useState<number>(1);
@@ -516,32 +517,33 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
     useSensor(KeyboardSensor, {}),
   );
 
-  useEffect(() => {
-    const loadConfig = async () => {
-      setIsLoading(true);
-      try {
-        const response = await getWorkflowFormConfig(workflow.id);
-        if ((response.status === 200 || response.status === 0) && response.data) {
-          const sorted = [...response.data.fields].sort(
-            (a, b) => (a.order ?? 0) - (b.order ?? 0),
-          );
-          setFields(sorted);
-          setVersion(response.data.version || 1);
-        } else if (response.status !== 404) {
-          toast.error(
-            response.message || "Failed to load form configuration for workflow",
-          );
-        }
-      } catch (error) {
-        console.error("Error loading form config:", error);
-        toast.error("Error loading form configuration");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Removed automatic form config loading to prevent webhook-template request
+  // useEffect(() => {
+  //   const loadConfig = async () => {
+  //     setIsLoading(true);
+  //     try {
+  //       const response = await getWorkflowFormConfig(workflow.id);
+  //       if ((response.status === 200 || response.status === 0) && response.data) {
+  //         const sorted = [...response.data.fields].sort(
+  //           (a, b) => (a.order ?? 0) - (b.order ?? 0),
+  //         );
+  //         setFields(sorted);
+  //         setVersion(response.data.version || 1);
+  //       } else if (response.status !== 404) {
+  //         toast.error(
+  //           response.message || "Failed to load form configuration for workflow",
+  //         );
+  //       }
+  //     } catch (error) {
+  //       console.error("Error loading form config:", error);
+  //       toast.error("Error loading form configuration");
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
 
-    loadConfig();
-  }, [workflow.id]);
+  //   loadConfig();
+  // }, [workflow.id]);
 
   const handleAddField = (type: WorkflowFormFieldType) => {
     setFields((prev) => {
@@ -552,7 +554,15 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
   };
 
   const handleFieldChange = (id: string, updated: EditableField) => {
-    setFields((prev) => prev.map((f) => (f.id === id ? updated : f)));
+    setFields((prev) => {
+      // Ensure fieldId is unique
+      const existingFieldIds = new Set(prev.filter((f) => f.id !== id).map((f) => f.fieldId));
+      if (existingFieldIds.has(updated.fieldId)) {
+        toast.error(`Field ID "${updated.fieldId}" is already used. Please use a unique ID.`);
+        return prev;
+      }
+      return prev.map((f) => (f.id === id ? updated : f));
+    });
   };
 
   const handleFieldDelete = (id: string) => {
@@ -577,10 +587,24 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const normalizedFields = fields.map((field, index) => ({
-        ...field,
-        order: index,
-      }));
+      const normalizedFields = fields.map((field, index) => {
+        // For dropdown fields, set label equal to value for each option
+        if (field.type === "dropdown" && field.options) {
+          const normalizedOptions = field.options.map((opt) => ({
+            ...opt,
+            label: opt.value || opt.label, // Use value as label when saving
+          }));
+          return {
+            ...field,
+            order: index,
+            options: normalizedOptions,
+          };
+        }
+        return {
+          ...field,
+          order: index,
+        };
+      });
 
       const payload: WorkflowFormConfig = {
         version: (version || 0) + 1,
@@ -592,12 +616,12 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
 
       if (result.status === 200 || result.status === 0) {
         toast.success("Form configuration saved successfully");
-        if (result.data) {
+        if (result.data && Array.isArray(result.data.fields)) {
           const sorted = [...result.data.fields].sort(
             (a, b) => (a.order ?? 0) - (b.order ?? 0),
           );
           setFields(sorted);
-          setVersion(result.data.version);
+          setVersion(result.data.version || payload.version);
         } else {
           setVersion(payload.version);
         }
@@ -636,93 +660,13 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => handleAddField("text")}
-            >
-              Text
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("textarea")}
-            >
-              Textarea
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("url")}
-            >
-              URL
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("email")}
-            >
-              Email
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("enum")}
-            >
-              Enum
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("number")}
-            >
-              Number
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("boolean")}
-            >
-              Boolean
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("dropdown")}
-            >
-              Dropdown
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
               onClick={() => handleAddField("file")}
             >
               File Upload
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("date")}
-            >
-              Date
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => handleAddField("datetime")}
-            >
-              DateTime
-            </Button>
           </div>
 
-          {fields.length === 0 && !isLoading && (
+          {fields.length === 0 && (
             <div className="flex items-center gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
               <IconAlertTriangle className="h-4 w-4" />
               <span>
@@ -731,31 +675,25 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
             </div>
           )}
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-              Loading form configuration...
-            </div>
-          ) : (
-            <DndContext
-              collisionDetection={closestCenter}
-              sensors={sensors}
-              onDragEnd={handleDragEnd}
+          <DndContext
+            collisionDetection={closestCenter}
+            sensors={sensors}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={sortableIds}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={sortableIds}
-                strategy={verticalListSortingStrategy}
-              >
-                {fields.map((field) => (
-                  <SortableFieldCard
-                    key={field.id}
-                    field={field}
-                    onChange={(updated) => handleFieldChange(field.id, updated)}
-                    onDelete={() => handleFieldDelete(field.id)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
+              {fields.map((field) => (
+                <SortableFieldCard
+                  key={field.id}
+                  field={field}
+                  onChange={(updated) => handleFieldChange(field.id, updated)}
+                  onDelete={() => handleFieldDelete(field.id)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
           <div className="flex items-center justify-between border-t pt-4">
             <div className="text-xs text-muted-foreground">
