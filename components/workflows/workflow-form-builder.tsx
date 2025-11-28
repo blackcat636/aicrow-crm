@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -31,7 +31,7 @@ import {
   WorkflowFormField,
   WorkflowFormFieldType,
 } from "@/interface/Workflow";
-import { updateWorkflowFormConfig } from "@/lib/api/workflows";
+import { updateWorkflowFormConfig, getWebhookTemplateData } from "@/lib/api/workflows";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -234,12 +234,12 @@ function SortableFieldCard({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`${field.id}-hint`}>Hint</Label>
+            <Label htmlFor={`${field.id}-placeholder`}>Placeholder</Label>
             <Input
-              id={`${field.id}-hint`}
-              value={field.hint || ""}
-              onChange={(e) => handleBasicChange("hint", e.target.value)}
-              placeholder="Optional hint / placeholder"
+              id={`${field.id}-placeholder`}
+              value={field.placeholder || ""}
+              onChange={(e) => handleBasicChange("placeholder", e.target.value)}
+              placeholder="Optional placeholder text"
             />
           </div>
         </div>
@@ -315,14 +315,21 @@ function SortableFieldCard({
               value={
                 typeof field.defaultValue === "string" && field.defaultValue !== ""
                   ? field.defaultValue
-                  : undefined
+                  : "__none__"
               }
-              onValueChange={(value) => handleBasicChange("defaultValue", value)}
+              onValueChange={(value) => {
+                if (value === "__none__") {
+                  handleBasicChange("defaultValue", null);
+                } else {
+                  handleBasicChange("defaultValue", value);
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="No default option" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
                 {(field.options || [])
                   .filter((opt) => opt.value && opt.value.trim() !== "")
                   .map((opt) => (
@@ -488,6 +495,42 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
     useSensor(KeyboardSensor, {}),
   );
 
+  // Fetch webhook-template-data when Form Builder tab is opened
+  useEffect(() => {
+    const fetchTemplateData = async () => {
+      try {
+        const templateDataResult = await getWebhookTemplateData(workflow.id);
+        if (templateDataResult.status === 200 || templateDataResult.status === 0) {
+          const data = templateDataResult.data as {
+            workflowId: number;
+            webhookTemplateRaw?: {
+              fields?: EditableField[];
+              version?: number;
+              updatedAt?: string;
+            };
+            inputSchema?: {
+              fields?: unknown[];
+              version?: number;
+            };
+          };
+
+          if (data?.webhookTemplateRaw?.fields) {
+            // Sort fields by order
+            const sortedFields = [...data.webhookTemplateRaw.fields].sort(
+              (a, b) => (a.order ?? 0) - (b.order ?? 0),
+            );
+            setFields(sortedFields);
+            setVersion(data.webhookTemplateRaw.version || 1);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching webhook template data:", error);
+      }
+    };
+
+    fetchTemplateData();
+  }, [workflow.id]);
+
   // Removed automatic form config loading to prevent webhook-template request
   // useEffect(() => {
   //   const loadConfig = async () => {
@@ -612,6 +655,7 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
       } else {
         toast.error(result.message || "Failed to save form configuration");
       }
+
     } catch (error) {
       console.error("Error saving form configuration:", error);
       toast.error("Error saving form configuration");

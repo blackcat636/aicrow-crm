@@ -168,7 +168,6 @@ export default function UserDetailPage() {
     try {
       setIsActionLoading(true);
       const result = await sendPasswordResetEmail(Number(userId));
-      console.log('Reset password result:', result);
       
       if (result.status === 200 || result.status === 0) {
         toast.success(result.message || 'Password reset email sent successfully');

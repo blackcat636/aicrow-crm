@@ -219,12 +219,6 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
-    console.log('🔵 Forwarding to backend:', {
-      url: `${API_URL}/admin/users`,
-      method: 'POST',
-      data: { ...requestData, password: '***' }
-    });
-
     const response = await fetch(`${API_URL}/admin/users`, {
       method: 'POST',
       headers: {
@@ -233,8 +227,6 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(requestData)
     });
-
-    console.log('🔵 Backend response status:', response.status, response.statusText);
 
     if (!response.ok) {
       let errorData: { message?: string; error?: string } = {};

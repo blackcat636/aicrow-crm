@@ -30,7 +30,7 @@ export default function Page() {
   const { workflows, isLoading, error, total, page, limit, fetchWorkflows } = useWorkflowsStore()
   
   // Local state for filter inputs
-  const [instanceIdInput, setInstanceIdInput] = useState<string>('');
+  const [workflowIdInput, setWorkflowIdInput] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [availableToUsersFilter, setAvailableToUsersFilter] = useState<string>('all');
@@ -51,12 +51,12 @@ export default function Page() {
         params.set('limit', urlLimit || '20');
         
         // Preserve existing filter params
-        const urlInstanceId = searchParams.get('instanceId');
+        const urlWorkflowId = searchParams.get('workflowId');
         const urlSearch = searchParams.get('search');
         const urlActive = searchParams.get('active');
         const urlAvailableToUsers = searchParams.get('availableToUsers');
         
-        if (urlInstanceId) params.set('instanceId', urlInstanceId);
+        if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
         if (urlSearch) params.set('search', urlSearch);
         if (urlActive) params.set('active', urlActive);
         if (urlAvailableToUsers) params.set('availableToUsers', urlAvailableToUsers);
@@ -78,17 +78,17 @@ export default function Page() {
 
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
     const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
-    const rawInstanceId = searchParams.get('instanceId');
-    const sanitizedInstanceId = sanitizeNumericId(rawInstanceId);
+    const rawWorkflowId = searchParams.get('workflowId');
+    const sanitizedWorkflowId = sanitizeNumericId(rawWorkflowId);
 
-    // If instanceId in URL містить нецифрові символи — виправляємо URL й не робимо запит з некоректним значенням
-    if (rawInstanceId !== null && sanitizedInstanceId !== rawInstanceId) {
+    // If workflowId in URL містить нецифрові символи — виправляємо URL й не робимо запит з некоректним значенням
+    if (rawWorkflowId !== null && sanitizedWorkflowId !== rawWorkflowId) {
       const params = new URLSearchParams(searchParams.toString());
 
-      if (sanitizedInstanceId) {
-        params.set('instanceId', sanitizedInstanceId);
+      if (sanitizedWorkflowId) {
+        params.set('workflowId', sanitizedWorkflowId);
       } else {
-        params.delete('instanceId');
+        params.delete('workflowId');
       }
 
       router.replace(`/workflows?${params.toString()}`, { scroll: false });
@@ -100,18 +100,18 @@ export default function Page() {
     const urlAvailableToUsers = searchParams.get('availableToUsers') || 'all';
     
     // Update local state from URL
-    setInstanceIdInput(sanitizedInstanceId);
+    setWorkflowIdInput(sanitizedWorkflowId);
     setSearchInput(urlSearch);
     setActiveFilter(urlActive);
     setAvailableToUsersFilter(urlAvailableToUsers);
     
     // Build filters object
     // Explicitly set undefined to clear filters when empty or "all" is selected
+    // Use workflowId as id parameter for exact match, search for text search
     const filters: WorkflowFilters = {
       page: urlPage,
       limit: urlLimit,
-      // Explicitly set undefined when empty to clear the filter in store
-      instanceId: sanitizedInstanceId ? parseInt(sanitizedInstanceId, 10) : undefined,
+      id: sanitizedWorkflowId ? parseInt(sanitizedWorkflowId, 10) : undefined,
       search: urlSearch || undefined,
       // Explicitly set undefined when "all" to clear the filter in store
       active: urlActive !== 'all' ? (urlActive === 'true') : undefined,
@@ -119,7 +119,7 @@ export default function Page() {
     };
 
     // Create URL string for comparison
-    const currentUrl = `page=${urlPage}&limit=${urlLimit}&instanceId=${sanitizedInstanceId || ''}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}`;
+    const currentUrl = `page=${urlPage}&limit=${urlLimit}&workflowId=${sanitizedWorkflowId || ''}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}`;
     
     // Only fetch if URL actually changed
     if (previousUrlRef.current !== currentUrl) {
@@ -133,35 +133,37 @@ export default function Page() {
     params.set('page', '1'); // Reset to page 1 when filtering
     params.set('limit', limit.toString());
 
-    const sanitizedInstanceId = sanitizeNumericId(instanceIdInput.trim());
-    if (sanitizedInstanceId) params.set('instanceId', sanitizedInstanceId);
-    if (searchInput.trim()) params.set('search', searchInput.trim());
+    const sanitizedWorkflowId = sanitizeNumericId(workflowIdInput.trim());
+    const trimmedSearch = searchInput.trim();
+    
+    if (sanitizedWorkflowId) params.set('workflowId', sanitizedWorkflowId);
+    if (trimmedSearch) params.set('search', trimmedSearch);
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
 
     // Update previousUrlRef to match the new URL before navigation
-    const newUrlString = `page=1&limit=${limit}&instanceId=${sanitizedInstanceId || ''}&search=${searchInput.trim()}&active=${activeFilter !== 'all' ? activeFilter : ''}&availableToUsers=${availableToUsersFilter !== 'all' ? availableToUsersFilter : ''}`;
+    const newUrlString = `page=1&limit=${limit}&workflowId=${sanitizedWorkflowId || ''}&search=${trimmedSearch}&active=${activeFilter !== 'all' ? activeFilter : ''}&availableToUsers=${availableToUsersFilter !== 'all' ? availableToUsersFilter : ''}`;
     previousUrlRef.current = newUrlString;
 
     router.replace(`/workflows?${params.toString()}`, { scroll: false });
-  }, [instanceIdInput, searchInput, activeFilter, availableToUsersFilter, limit, router]);
+  }, [workflowIdInput, searchInput, activeFilter, availableToUsersFilter, limit, router]);
 
-  // Debounced search for text inputsimage.png
+  // Debounced search for text inputs
   useEffect(() => {
     const timer = setTimeout(() => {
       updateFilters();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [instanceIdInput, searchInput, updateFilters]);
+  }, [workflowIdInput, searchInput, updateFilters]);
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams();
     params.set('page', newPage.toString());
     params.set('limit', limit.toString());
 
-    const sanitizedInstanceId = sanitizeNumericId(instanceIdInput.trim());
-    if (sanitizedInstanceId) params.set('instanceId', sanitizedInstanceId);
+    const sanitizedWorkflowId = sanitizeNumericId(workflowIdInput.trim());
+    if (sanitizedWorkflowId) params.set('workflowId', sanitizedWorkflowId);
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
@@ -174,8 +176,8 @@ export default function Page() {
     params.set('page', '1');
     params.set('limit', newPageSize.toString());
 
-    const sanitizedInstanceId = sanitizeNumericId(instanceIdInput.trim());
-    if (sanitizedInstanceId) params.set('instanceId', sanitizedInstanceId);
+    const sanitizedWorkflowId = sanitizeNumericId(workflowIdInput.trim());
+    if (sanitizedWorkflowId) params.set('workflowId', sanitizedWorkflowId);
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
@@ -201,15 +203,15 @@ export default function Page() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4 py-4">
           <div className="flex items-center gap-2">
-            <Label htmlFor="instanceId" className="text-sm font-medium whitespace-nowrap">
-              Instance ID:
+            <Label htmlFor="workflowId" className="text-sm font-medium whitespace-nowrap">
+              Workflow ID:
             </Label>
             <Input
-              id="instanceId"
+              id="workflowId"
               type="text"
-              placeholder="Instance ID"
-              value={instanceIdInput}
-              onChange={(e) => setInstanceIdInput(sanitizeNumericId(e.target.value))}
+              placeholder="Workflow ID"
+              value={workflowIdInput}
+              onChange={(e) => setWorkflowIdInput(sanitizeNumericId(e.target.value))}
               onBlur={updateFilters}
               className="w-32"
               inputMode="numeric"
@@ -226,7 +228,7 @@ export default function Page() {
               <Input
                 id="search"
                 type="text"
-                placeholder="Name, display name..."
+                placeholder="Name, Description, id"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9 w-64"

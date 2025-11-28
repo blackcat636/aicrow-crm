@@ -15,6 +15,7 @@ export interface WorkflowFilters {
   page?: number;
   limit?: number;
   instanceId?: number;
+  id?: number;
   active?: boolean;
   search?: string;
   availableToUsers?: boolean;
@@ -27,6 +28,7 @@ export async function getAllWorkflows(
     page = 1,
     limit = 20,
     instanceId,
+    id,
     active,
     search,
     availableToUsers
@@ -38,6 +40,9 @@ export async function getAllWorkflows(
     params.set('limit', limit.toString());
     if (instanceId !== undefined) {
       params.set('instanceId', instanceId.toString());
+    }
+    if (id !== undefined) {
+      params.set('id', id.toString());
     }
     if (active !== undefined) {
       params.set('active', active.toString());
@@ -247,6 +252,47 @@ export async function updateWorkflowFormConfig(
     };
   } catch (error) {
     console.error('❌ API: Error in updateWorkflowFormConfig:', error);
+    return {
+      status: 0,
+      message: 'Network error',
+      data: null
+    };
+  }
+}
+
+export interface WebhookTemplateDataApiResponse {
+  status: number;
+  data: unknown;
+  message?: string;
+}
+
+export async function getWebhookTemplateData(
+  id: number
+): Promise<WebhookTemplateDataApiResponse> {
+  try {
+    const url = `${API_URL}/admin/automations/workflows/${id}/webhook-template-data`;
+    const response = await fetchWithAuth(url);
+    const data = (await response.json()) as WebhookTemplateDataApiResponse;
+
+    if (!response.ok) {
+      return {
+        status: response.status,
+        message: data.message || 'Failed to fetch webhook template data',
+        data: null
+      };
+    }
+
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    }
+
+    return {
+      status: data.status || 500,
+      message: data.message || 'Failed to fetch webhook template data',
+      data: null
+    };
+  } catch (error) {
+    console.error('❌ API: Error in getWebhookTemplateData:', error);
     return {
       status: 0,
       message: 'Network error',

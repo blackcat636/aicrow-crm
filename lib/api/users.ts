@@ -204,13 +204,6 @@ export async function createUser(userData: {
     const url = `${API_URL}/admin/users`;
     const requestBody = JSON.stringify(userData);
 
-    console.log('🔵 Creating user:', {
-      url,
-      method: 'POST',
-      data: { ...userData, password: '***' },
-      requestBody: requestBody
-    });
-
     const response = await fetchWithAuth(url, {
       method: 'POST',
       headers: {
@@ -219,16 +212,9 @@ export async function createUser(userData: {
       body: requestBody
     });
 
-    console.log('🔵 Response status:', response.status, response.statusText);
-    console.log(
-      '🔵 Response headers:',
-      Object.fromEntries(response.headers.entries())
-    );
-
     let data: UserApiResponse;
     try {
       const responseText = await response.text();
-      console.log('🔵 Response text:', responseText);
       data = JSON.parse(responseText) as UserApiResponse;
     } catch (parseError) {
       console.error('❌ Failed to parse response:', parseError);
@@ -249,7 +235,6 @@ export async function createUser(userData: {
       throw new Error(errorMessage);
     }
 
-    console.log('✅ User created successfully:', data);
     return data;
   } catch (error) {
     console.error('❌ Error creating user:', error);

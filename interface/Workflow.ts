@@ -77,7 +77,7 @@ export interface WorkflowFormField {
   label: string;
   type: WorkflowFormFieldType;
   description?: string;
-  hint?: string;
+  placeholder?: string;
   required: boolean;
   /** Default value in a type-appropriate format */
   defaultValue?: string | number | boolean | null;

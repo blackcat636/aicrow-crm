@@ -57,19 +57,11 @@ export async function PUT(
 
     // Handle priceUsd if provided
     if (priceUsd !== undefined) {
-      console.log(
-        '🔍 Price handling - Input:',
-        priceUsd,
-        'Type:',
-        typeof priceUsd
-      );
 
       // Simple validation - just check if it's a positive number
       if (typeof priceUsd === 'number' && priceUsd >= 0) {
         updateData.priceUsd = priceUsd;
-        console.log('✅ Price added to updateData:', updateData.priceUsd);
       } else {
-        console.log('❌ Invalid price value:', priceUsd);
         return NextResponse.json(
           {
             status: 400,
@@ -99,12 +91,6 @@ export async function PUT(
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
-    console.log('📤 Sending to backend:', {
-      url: `${API_URL}/admin/automations/workflows/${workflowId}`,
-      method: 'PUT',
-      body: updateData
-    });
-
     const response = await fetchWithAuth(
       `${API_URL}/admin/automations/workflows/${workflowId}`,
       {
@@ -118,10 +104,7 @@ export async function PUT(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.log('❌ Backend error response:', {
-        status: response.status,
-        errorData
-      });
+
       return NextResponse.json(
         {
           status: response.status,
