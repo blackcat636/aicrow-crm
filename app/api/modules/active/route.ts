@@ -15,7 +15,19 @@ const ACTIVE_MODULES = [
       can_view: true,
       can_edit: true,
       can_delete: false
-    }
+    },
+    subItems: [
+      {
+        title: 'Users',
+        url: '/users',
+        icon: 'IconUsers'
+      },
+      {
+        title: 'All Logs',
+        url: '/audit-logs',
+        icon: 'IconHistory'
+      }
+    ]
   },
   {
     key: 'automations',

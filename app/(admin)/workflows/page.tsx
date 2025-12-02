@@ -126,7 +126,7 @@ export default function Page() {
       previousUrlRef.current = currentUrl;
       fetchWorkflows(filters);
     }
-  }, [searchParams, fetchWorkflows]);
+  }, [searchParams, fetchWorkflows, router]);
 
   const updateFilters = useCallback(() => {
     const params = new URLSearchParams();

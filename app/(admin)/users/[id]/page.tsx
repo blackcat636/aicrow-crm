@@ -1,6 +1,6 @@
 "use client"
 export const runtime = 'edge';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   getUserById, 
@@ -69,6 +69,48 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { AuditLogsDataTable } from '@/components/audit-logs/audit-logs-data-table';
+import { AuditLogDetailDialog } from '@/components/audit-logs/audit-log-detail-dialog';
+import { useAuditLogsStore } from '@/store/useAuditLogsStore';
+import { IconHistory } from '@tabler/icons-react';
+import { CalendarIcon } from "lucide-react";
+import { AuditLog, AuditLogFilters } from '@/interface/AuditLog';
+
+const toDateOnly = (date: Date) => {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+const formatDate = (date: Date) => {
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const adjusted = new Date(date.getTime() - offsetMs);
+  return adjusted.toISOString().slice(0, 10);
+};
+
+const parseDateValue = (value: string) => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return toDateOnly(parsed);
+};
+
+const clampDateValue = (value: string, min: Date, max: Date) => {
+  const parsed = parseDateValue(value);
+  if (!parsed) {
+    return formatDate(min);
+  }
+
+  const clampedTime = Math.min(max.getTime(), Math.max(min.getTime(), parsed.getTime()));
+  return formatDate(new Date(clampedTime));
+};
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -100,6 +142,41 @@ export default function UserDetailPage() {
     isEmailVerified: false,
     isActive: true,
   });
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  
+  const {
+    auditLogs,
+    isLoading: isLoadingLogs,
+    total: totalLogs,
+    page: logsPage,
+    limit: logsLimit,
+    availableFilters,
+    fetchAuditLogsByUserId,
+  } = useAuditLogsStore();
+
+  // Filter states for audit logs tab
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [entityIdInput, setEntityIdInput] = useState<string>('');
+  const [actionTypeFilter, setActionTypeFilter] = useState<string>('all');
+  const todayDate = useMemo(() => toDateOnly(new Date()), []);
+  const minDate = useMemo(() => {
+    const min = new Date(todayDate);
+    min.setDate(min.getDate() - 30);
+    return min;
+  }, [todayDate]);
+  const todayString = useMemo(() => formatDate(todayDate), [todayDate]);
+  const minDateString = useMemo(() => formatDate(minDate), [minDate]);
+  const [dateFromInput, setDateFromInput] = useState<string>(() => minDateString);
+  const [dateToInput, setDateToInput] = useState<string>(() => todayString);
+  const [successFilter, setSuccessFilter] = useState<string>('all');
+  const [isAdminActionFilter, setIsAdminActionFilter] = useState<string>('all');
+  const [isSystemFilter, setIsSystemFilter] = useState<string>('all');
+  const lastAppliedDatesRef = useRef<{ from: string; to: string }>({
+    from: minDateString,
+    to: todayString,
+  });
+  const lastAppliedFiltersRef = useRef<string>('');
 
   const fetchUser = useCallback(async () => {
     try {
@@ -124,6 +201,178 @@ export default function UserDetailPage() {
       fetchUser();
     }
   }, [userId, fetchUser]);
+
+  const buildLogsFilters = useCallback(
+    (overrides?: Partial<AuditLogFilters>): AuditLogFilters => {
+      const effectivePage = overrides?.page ?? logsPage;
+      const effectiveLimit = overrides?.limit ?? logsLimit;
+
+      const filters: AuditLogFilters = {
+        page: effectivePage,
+        limit: effectiveLimit,
+      };
+
+      const searchValue = (overrides?.search !== undefined ? overrides.search : searchInput)?.trim();
+      if (searchValue) {
+        filters.search = searchValue;
+      }
+
+      const entityIdSource = overrides?.entityId !== undefined ? `${overrides.entityId}` : entityIdInput;
+      const entityIdValue = entityIdSource?.trim();
+      if (entityIdValue) {
+        const parsed = parseInt(entityIdValue, 10);
+        if (!isNaN(parsed)) {
+          filters.entityId = parsed;
+        }
+      }
+
+      const actionTypeValue = overrides?.actionType !== undefined ? overrides.actionType : actionTypeFilter;
+      if (actionTypeValue && actionTypeValue !== 'all') {
+        filters.actionType = actionTypeValue;
+      }
+
+      const dateFromValue = overrides?.dateFrom !== undefined ? overrides.dateFrom : dateFromInput.trim();
+      if (dateFromValue) {
+        filters.dateFrom = dateFromValue;
+      }
+
+      const dateToValue = overrides?.dateTo !== undefined ? overrides.dateTo : dateToInput.trim();
+      if (dateToValue) {
+        filters.dateTo = dateToValue;
+      }
+
+      const successValue = overrides?.success !== undefined ? overrides.success : successFilter;
+      if (successValue && successValue !== 'all') {
+        filters.success = successValue === 'true';
+      }
+
+      const isAdminActionValue = overrides?.isAdminAction !== undefined ? overrides.isAdminAction : isAdminActionFilter;
+      if (isAdminActionValue && isAdminActionValue !== 'all') {
+        filters.isAdminAction = isAdminActionValue === 'true';
+      }
+
+      const isSystemValue = overrides?.isSystem !== undefined ? overrides.isSystem : isSystemFilter;
+      // Only include isSystem filter if explicitly set to 'true' or 'false' (not 'all')
+      // If 'false', don't include the filter at all (show all events including system)
+      if (isSystemValue && isSystemValue !== 'all' && isSystemValue !== 'false') {
+        filters.isSystem = isSystemValue === 'true';
+      }
+
+      return filters;
+    },
+    [
+      searchInput,
+      entityIdInput,
+      actionTypeFilter,
+      dateFromInput,
+      dateToInput,
+      successFilter,
+      isAdminActionFilter,
+      isSystemFilter,
+      logsPage,
+      logsLimit,
+    ]
+  );
+
+  const applyLogsFilters = useCallback(
+    (overrides?: Partial<AuditLogFilters>) => {
+      if (!user?.id) {
+        return;
+      }
+
+      const filters = buildLogsFilters(overrides);
+      const filtersKey = JSON.stringify(filters);
+      if (filtersKey === lastAppliedFiltersRef.current) {
+        return;
+      }
+      lastAppliedFiltersRef.current = filtersKey;
+      lastAppliedDatesRef.current = {
+        from: filters.dateFrom ?? '',
+        to: filters.dateTo ?? '',
+      };
+
+      setTimeout(() => {
+        fetchAuditLogsByUserId(user.id, filters);
+      }, 0);
+    },
+    [user?.id, buildLogsFilters, fetchAuditLogsByUserId]
+  );
+
+  const handleDateFromBlur = useCallback(() => {
+    const trimmedValue = dateFromInput.trim();
+    const sanitizedFrom = trimmedValue
+      ? clampDateValue(trimmedValue, minDate, todayDate)
+      : minDateString;
+
+    if (sanitizedFrom !== dateFromInput) {
+      setDateFromInput(sanitizedFrom);
+    }
+
+    const minForToDate = sanitizedFrom ? parseDateValue(sanitizedFrom) ?? minDate : minDate;
+    const sanitizedTo = dateToInput
+      ? clampDateValue(dateToInput.trim(), minForToDate, todayDate)
+      : todayString;
+
+    if (sanitizedTo !== dateToInput) {
+      setDateToInput(sanitizedTo);
+    }
+
+    const { from: lastFrom, to: lastTo } = lastAppliedDatesRef.current;
+
+    if (sanitizedFrom === lastFrom && sanitizedTo === lastTo) {
+      return;
+    }
+
+    lastAppliedDatesRef.current = {
+      from: sanitizedFrom,
+      to: sanitizedTo,
+    };
+
+    applyLogsFilters({
+      page: 1,
+      dateFrom: sanitizedFrom || undefined,
+      dateTo: sanitizedTo || undefined,
+    });
+  }, [applyLogsFilters, dateFromInput, dateToInput, minDate, minDateString, todayDate, todayString]);
+
+  const handleDateToBlur = useCallback(() => {
+    const trimmedValue = dateToInput.trim();
+    const minForToDate = dateFromInput
+      ? parseDateValue(dateFromInput) ?? minDate
+      : minDate;
+    const sanitizedTo = trimmedValue
+      ? clampDateValue(trimmedValue, minForToDate, todayDate)
+      : todayString;
+
+    if (sanitizedTo !== dateToInput) {
+      setDateToInput(sanitizedTo);
+    }
+
+    const maxForFromDate = parseDateValue(sanitizedTo) ?? todayDate;
+    const sanitizedFrom = dateFromInput
+      ? clampDateValue(dateFromInput.trim(), minDate, maxForFromDate)
+      : minDateString;
+    if (sanitizedFrom !== dateFromInput) {
+      setDateFromInput(sanitizedFrom);
+    }
+
+    applyLogsFilters({
+      page: 1,
+      dateFrom: sanitizedFrom || undefined,
+      dateTo: sanitizedTo || undefined,
+    });
+  }, [applyLogsFilters, dateFromInput, dateToInput, minDate, minDateString, todayDate, todayString]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      applyLogsFilters({ page: 1 });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    searchInput,
+    applyLogsFilters,
+  ]);
 
   // Check for edit query parameter
   useEffect(() => {
@@ -390,7 +639,17 @@ export default function UserDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-4">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="audit-logs">
+              <IconHistory className="h-4 w-4 mr-2" />
+              Audit Logs
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Basic Information */}
           <Card>
             <CardHeader>
@@ -631,7 +890,234 @@ export default function UserDetailPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="audit-logs" className="flex flex-col gap-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold">Audit Logs</h2>
+                <p className="text-sm text-muted-foreground">
+                  Page {logsPage} of {Math.ceil(totalLogs / logsLimit)} • Total: {totalLogs} logs
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchInput('');
+                  setEntityIdInput('');
+                  setActionTypeFilter('all');
+                  setDateFromInput(minDateString);
+                  setDateToInput(todayString);
+                  setSuccessFilter('all');
+                  setIsAdminActionFilter('all');
+                  setIsSystemFilter('all');
+                  lastAppliedFiltersRef.current = '';
+                  applyLogsFilters({
+                    page: 1,
+                    limit: 20,
+                    search: undefined,
+                    entityId: undefined,
+                    actionType: undefined,
+                    dateFrom: minDateString,
+                    dateTo: todayString,
+                    success: undefined,
+                    isAdminAction: undefined,
+                    isSystem: undefined,
+                  });
+                }}
+              >
+                <IconX className="h-4 w-4 mr-2" />
+                Clear Filters
+              </Button>
+            </div>
+
+            {/* Filters for Audit Logs Tab */}
+            <div className="flex flex-wrap items-center gap-4 py-4 border-b">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="search-logs" className="text-sm font-medium whitespace-nowrap">
+                  Search:
+                </Label>
+                <Input
+                  id="search-logs"
+                  type="text"
+                  placeholder="Search in descriptions..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-48"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="entityId-logs" className="text-sm font-medium whitespace-nowrap">
+                  Entity ID:
+                </Label>
+                <Input
+                  id="entityId-logs"
+                  type="number"
+                  placeholder="Entity ID"
+                  value={entityIdInput}
+                  onChange={(e) => setEntityIdInput(e.target.value)}
+                  onBlur={() => applyLogsFilters({ page: 1 })}
+                  className="w-32"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="actionType-logs" className="text-sm font-medium whitespace-nowrap">
+                  Action Type:
+                </Label>
+                <Select
+                  value={actionTypeFilter}
+                  onValueChange={(value) => {
+                    setActionTypeFilter(value);
+                    applyLogsFilters({ page: 1, actionType: value === 'all' ? undefined : value });
+                  }}
+                >
+                  <SelectTrigger id="actionType-logs" className="w-48">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {availableFilters?.actionTypes?.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="success-logs" className="text-sm font-medium whitespace-nowrap">
+                  Status:
+                </Label>
+                <Select
+                  value={successFilter}
+                  onValueChange={(value) => {
+                    setSuccessFilter(value);
+                    applyLogsFilters({ page: 1, success: value === 'all' ? undefined : value === 'true' });
+                  }}
+                >
+                  <SelectTrigger id="success-logs" className="w-32">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Success</SelectItem>
+                    <SelectItem value="false">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="isAdminAction-logs" className="text-sm font-medium whitespace-nowrap">
+                  Action Type:
+                </Label>
+                <Select
+                  value={isAdminActionFilter}
+                  onValueChange={(value) => {
+                    setIsAdminActionFilter(value);
+                    applyLogsFilters({ page: 1, isAdminAction: value === 'all' ? undefined : value === 'true' });
+                  }}
+                >
+                  <SelectTrigger id="isAdminAction-logs" className="w-40">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Admin Actions</SelectItem>
+                    <SelectItem value="false">User Actions</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="isSystem-logs" className="text-sm font-medium whitespace-nowrap">
+                  System Events:
+                </Label>
+                <Select
+                  value={isSystemFilter}
+                  onValueChange={(value) => {
+                    setIsSystemFilter(value);
+                    // If 'false' or 'all', don't filter (show all events)
+                    // Only filter when explicitly set to 'true' (show only system events)
+                    applyLogsFilters({ page: 1, isSystem: value === 'true' ? true : undefined });
+                  }}
+                >
+                  <SelectTrigger id="isSystem-logs" className="w-40">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Show Only</SelectItem>
+                    <SelectItem value="false">Hide</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="dateFrom-logs" className="text-sm font-medium whitespace-nowrap">
+                  From:
+                </Label>
+                <div className="relative w-48">
+                  <Input
+                    id="dateFrom-logs"
+                    type="date"
+                    value={dateFromInput}
+                    onChange={(e) => setDateFromInput(e.target.value)}
+                    onBlur={handleDateFromBlur}
+                    min={minDateString}
+                    max={todayString}
+                    className="pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                  <CalendarIcon className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="dateTo-logs" className="text-sm font-medium whitespace-nowrap">
+                  To:
+                </Label>
+                <div className="relative w-48">
+                  <Input
+                    id="dateTo-logs"
+                    type="date"
+                    value={dateToInput}
+                    onChange={(e) => setDateToInput(e.target.value)}
+                    onBlur={handleDateToBlur}
+                    min={dateFromInput || minDateString}
+                    max={todayString}
+                    className="pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                  <CalendarIcon className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+
+            <AuditLogsDataTable
+              data={auditLogs}
+              total={totalLogs}
+              page={logsPage}
+              limit={logsLimit}
+              onPageChange={(newPage) => applyLogsFilters({ page: newPage, limit: logsLimit })}
+              onPageSizeChange={(newLimit) => applyLogsFilters({ page: 1, limit: newLimit })}
+              isLoading={isLoadingLogs}
+              onViewDetails={(log) => {
+                setSelectedLog(log);
+                setShowDetailDialog(true);
+              }}
+              hideUserId={true}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <AuditLogDetailDialog
+          log={selectedLog}
+          open={showDetailDialog}
+          onOpenChange={setShowDetailDialog}
+        />
 
         {/* Change Password Dialog */}
         <Dialog 
