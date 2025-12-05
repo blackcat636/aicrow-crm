@@ -553,20 +553,10 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
           };
 
           if (data?.webhookTemplateRaw?.fields) {
-            // Sort fields by order and normalize enum fields
+            // Sort fields by order
             const sortedFields = [...data.webhookTemplateRaw.fields].sort(
               (a, b) => (a.order ?? 0) - (b.order ?? 0),
-            ).map(field => {
-              // Normalize enum fields: ensure defaultValue is an array
-              if (field.type === "enum" && !Array.isArray(field.defaultValue)) {
-                if (typeof field.defaultValue === "string" && field.defaultValue.trim() !== "") {
-                  return { ...field, defaultValue: [field.defaultValue] };
-                } else {
-                  return { ...field, defaultValue: [] };
-                }
-              }
-              return field;
-            });
+            );
             setFields(sortedFields);
             setVersion(data.webhookTemplateRaw.version || 1);
           }
