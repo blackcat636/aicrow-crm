@@ -77,6 +77,10 @@ function createEmptyField(type: WorkflowFormFieldType, index: number): EditableF
     base.defaultValue = false;
   }
 
+  if (type === "enum") {
+    base.defaultValue = [];
+  }
+
   return base;
 }
 
@@ -364,11 +368,74 @@ function SortableFieldCard({
               placeholder="user@example.com"
             />
           ) : field.type === "enum" ? (
-            <Input
-              value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
-              onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
-              placeholder="Enum value"
-            />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Enum values</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const currentValues = Array.isArray(field.defaultValue) 
+                      ? field.defaultValue 
+                      : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : []);
+                    handleBasicChange("defaultValue", [...currentValues, ""]);
+                  }}
+                >
+                  <IconPlus className="mr-1 h-4 w-4" />
+                  Add value
+                </Button>
+              </div>
+              {Array.isArray(field.defaultValue) && field.defaultValue.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No values yet. Add at least one.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(Array.isArray(field.defaultValue) 
+                    ? field.defaultValue 
+                    : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : [])
+                  ).map((value, idx) => (
+                    <div
+                      key={`${field.id}-enum-${idx}`}
+                      className="flex items-center gap-2"
+                    >
+                      <Input
+                        value={value}
+                        onChange={(e) => {
+                          const currentValues = Array.isArray(field.defaultValue) 
+                            ? field.defaultValue 
+                            : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : []);
+                          const updatedValues = [...currentValues];
+                          updatedValues[idx] = e.target.value;
+                          handleBasicChange("defaultValue", updatedValues);
+                        }}
+                        placeholder="Enter enum value"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        onClick={() => {
+                          const currentValues = Array.isArray(field.defaultValue) 
+                            ? field.defaultValue 
+                            : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : []);
+                          const updatedValues = currentValues.filter((_, index) => index !== idx);
+                          handleBasicChange("defaultValue", updatedValues.length > 0 ? updatedValues : []);
+                        }}
+                      >
+                        <IconTrash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Multiple text values that will be sent as an array.
+              </p>
+            </div>
           ) : (
             <Input
               value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
@@ -525,10 +592,20 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
           };
 
           if (data?.webhookTemplateRaw?.fields) {
-            // Sort fields by order
+            // Sort fields by order and normalize enum fields
             const sortedFields = [...data.webhookTemplateRaw.fields].sort(
               (a, b) => (a.order ?? 0) - (b.order ?? 0),
-            );
+            ).map(field => {
+              // Normalize enum fields: ensure defaultValue is an array
+              if (field.type === "enum" && !Array.isArray(field.defaultValue)) {
+                if (typeof field.defaultValue === "string" && field.defaultValue.trim() !== "") {
+                  return { ...field, defaultValue: [field.defaultValue] };
+                } else {
+                  return { ...field, defaultValue: [] };
+                }
+              }
+              return field;
+            });
             setFields(sortedFields);
             setVersion(data.webhookTemplateRaw.version || 1);
           }
@@ -634,6 +711,21 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
             ...field,
             order: index,
             defaultValue: numValue,
+          };
+        }
+        
+        // For enum fields, ensure defaultValue is an array of strings
+        if (field.type === "enum") {
+          let enumValue: string[] = [];
+          if (Array.isArray(field.defaultValue)) {
+            enumValue = field.defaultValue.filter(v => v && v.trim() !== "");
+          } else if (typeof field.defaultValue === "string" && field.defaultValue.trim() !== "") {
+            enumValue = [field.defaultValue];
+          }
+          return {
+            ...field,
+            order: index,
+            defaultValue: enumValue.length > 0 ? enumValue : [],
           };
         }
         
