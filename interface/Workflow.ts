@@ -79,6 +79,8 @@ export interface WorkflowFormField {
   description?: string;
   placeholder?: string;
   required: boolean;
+  /** Whether the field should be hidden from the form */
+  hidden?: boolean;
   /** Default value in a type-appropriate format */
   defaultValue?: string | number | boolean | null;
   /** Dropdown options (only for dropdown type) */
@@ -97,6 +99,11 @@ export interface WorkflowFormConfig {
   version: number;
   fields: WorkflowFormField[];
   updatedAt?: string;
+}
+
+export interface ChainableWorkflowsConfig {
+  allowedTargets?: number[];
+  defaultDataMapping?: Record<string, string>;
 }
 
 export interface Workflow {
@@ -118,6 +125,8 @@ export interface Workflow {
   connectionsData?: WorkflowConnections;
   /** Optional dynamic form configuration for workflow execution */
   formConfig?: WorkflowFormConfig | null;
+  /** Optional chainable workflows configuration */
+  chainableWorkflows?: ChainableWorkflowsConfig | null;
   n8nCreatedAt: string;
   n8nUpdatedAt: string;
   syncedAt: string;
@@ -142,6 +151,7 @@ export interface WorkflowUpdateRequest {
   displayDescription?: string;
   availableToUsers?: boolean;
   priceUsd?: number;
+  chainableWorkflows?: ChainableWorkflowsConfig | null;
 }
 
 export interface WorkflowApiResponse {

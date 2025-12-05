@@ -241,21 +241,25 @@ export default function UserDetailPage() {
         filters.dateTo = dateToValue;
       }
 
-      const successValue = overrides?.success !== undefined ? overrides.success : successFilter;
-      if (successValue && successValue !== 'all') {
-        filters.success = successValue === 'true';
+      // Handle success filter: overrides can be boolean, state is string
+      if (overrides?.success !== undefined) {
+        filters.success = overrides.success;
+      } else if (successFilter && successFilter !== 'all') {
+        filters.success = successFilter === 'true';
       }
 
-      const isAdminActionValue = overrides?.isAdminAction !== undefined ? overrides.isAdminAction : isAdminActionFilter;
-      if (isAdminActionValue && isAdminActionValue !== 'all') {
-        filters.isAdminAction = isAdminActionValue === 'true';
+      // Handle isAdminAction filter: overrides can be boolean, state is string
+      if (overrides?.isAdminAction !== undefined) {
+        filters.isAdminAction = overrides.isAdminAction;
+      } else if (isAdminActionFilter && isAdminActionFilter !== 'all') {
+        filters.isAdminAction = isAdminActionFilter === 'true';
       }
 
-      const isSystemValue = overrides?.isSystem !== undefined ? overrides.isSystem : isSystemFilter;
-      // Only include isSystem filter if explicitly set to 'true' or 'false' (not 'all')
-      // If 'false', don't include the filter at all (show all events including system)
-      if (isSystemValue && isSystemValue !== 'all' && isSystemValue !== 'false') {
-        filters.isSystem = isSystemValue === 'true';
+      // Handle isSystem filter: overrides can be boolean, state is string
+      if (overrides?.isSystem !== undefined) {
+        filters.isSystem = overrides.isSystem;
+      } else if (isSystemFilter && isSystemFilter !== 'all' && isSystemFilter !== 'false') {
+        filters.isSystem = isSystemFilter === 'true';
       }
 
       return filters;
@@ -972,7 +976,10 @@ export default function UserDetailPage() {
                   value={actionTypeFilter}
                   onValueChange={(value) => {
                     setActionTypeFilter(value);
+                    // Use setTimeout to ensure state update happens first, then apply filters
+                    setTimeout(() => {
                     applyLogsFilters({ page: 1, actionType: value === 'all' ? undefined : value });
+                    }, 0);
                   }}
                 >
                   <SelectTrigger id="actionType-logs" className="w-48">
@@ -997,7 +1004,10 @@ export default function UserDetailPage() {
                   value={successFilter}
                   onValueChange={(value) => {
                     setSuccessFilter(value);
+                    // Use setTimeout to ensure state update happens first, then apply filters
+                    setTimeout(() => {
                     applyLogsFilters({ page: 1, success: value === 'all' ? undefined : value === 'true' });
+                    }, 0);
                   }}
                 >
                   <SelectTrigger id="success-logs" className="w-32">
@@ -1019,7 +1029,10 @@ export default function UserDetailPage() {
                   value={isAdminActionFilter}
                   onValueChange={(value) => {
                     setIsAdminActionFilter(value);
+                    // Use setTimeout to ensure state update happens first, then apply filters
+                    setTimeout(() => {
                     applyLogsFilters({ page: 1, isAdminAction: value === 'all' ? undefined : value === 'true' });
+                    }, 0);
                   }}
                 >
                   <SelectTrigger id="isAdminAction-logs" className="w-40">
@@ -1041,9 +1054,12 @@ export default function UserDetailPage() {
                   value={isSystemFilter}
                   onValueChange={(value) => {
                     setIsSystemFilter(value);
+                    // Use setTimeout to ensure state update happens first, then apply filters
                     // If 'false' or 'all', don't filter (show all events)
                     // Only filter when explicitly set to 'true' (show only system events)
+                    setTimeout(() => {
                     applyLogsFilters({ page: 1, isSystem: value === 'true' ? true : undefined });
+                    }, 0);
                   }}
                 >
                   <SelectTrigger id="isSystem-logs" className="w-40">

@@ -42,7 +42,8 @@ import {
   IconDeviceFloppy,
   IconEye,
   IconToggleLeft,
-  IconToggleRight
+  IconToggleRight,
+  IconRefresh
 } from "@tabler/icons-react"
 
 interface PageProps {
@@ -525,6 +526,20 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                                 View
                               </Link>
                             </Button>
+                            {/* Restart Button - Show for completed executions */}
+                            {(execution.status === '1' || execution.status === 'success' || execution.status === 'completed') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // TODO: Implement restart functionality
+                                  toast.info('Restart functionality will be implemented');
+                                }}
+                              >
+                                <IconRefresh className="mr-1 h-4 w-4" />
+                                Restart
+                              </Button>
+                            )}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             Created: {execution.createdAt ? new Date(execution.createdAt as string).toLocaleString('uk-UA') : 'N/A'}
@@ -635,6 +650,20 @@ export default function UserWorkflowDetailPage({ params }: PageProps) {
                         </div>
                       )
                     })()}
+
+                    {/* Child Workflows - Show only for completed executions */}
+                    {(execution.status === '1' || execution.status === 'success' || execution.status === 'completed') && (
+                      <div className="mt-4 pt-4 border-t space-y-4">
+                        {/* Child Workflows Section */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Child Workflows</Label>
+                          <div className="text-sm text-muted-foreground">
+                            {/* TODO: Fetch and display available child workflows */}
+                            <p>Child workflows display functionality will be added after API implementation</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

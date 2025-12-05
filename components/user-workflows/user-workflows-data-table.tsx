@@ -144,6 +144,40 @@ const createColumns = (
     ),
   },
   {
+    accessorKey: "workflowId",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 px-2 lg:px-3"
+        >
+          Workflow ID
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <IconArrowsUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const workflowId = row.original.workflowId || row.original.workflow?.id;
+      if (!workflowId) {
+        return <div className="w-24 text-muted-foreground">-</div>;
+      }
+      return (
+        <div className="w-24">
+          <Link href={`/workflows/${workflowId}`} className="font-medium text-primary hover:underline">
+            {String(workflowId)}
+          </Link>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "name",
     header: ({ column }) => {
       return (

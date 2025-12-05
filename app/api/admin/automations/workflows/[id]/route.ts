@@ -24,14 +24,20 @@ export async function PUT(
     const body = await request.json();
 
     // Validate required fields
-    const { displayName, displayDescription, availableToUsers, priceUsd } =
-      body;
+    const {
+      displayName,
+      displayDescription,
+      availableToUsers,
+      priceUsd,
+      chainableWorkflows
+    } = body;
 
     if (
       !displayName &&
       !displayDescription &&
       availableToUsers === undefined &&
-      priceUsd === undefined
+      priceUsd === undefined &&
+      chainableWorkflows === undefined
     ) {
       return NextResponse.json(
         {
@@ -42,22 +48,104 @@ export async function PUT(
       );
     }
 
+    // Validate chainableWorkflows if provided
+    if (chainableWorkflows !== undefined) {
+      if (chainableWorkflows !== null) {
+        // If not null, must be an object
+        if (
+          typeof chainableWorkflows !== 'object' ||
+          Array.isArray(chainableWorkflows)
+        ) {
+          return NextResponse.json(
+            {
+              status: 400,
+              message: 'chainableWorkflows must be an object or null'
+            },
+            { status: 400 }
+          );
+        }
+
+        // Validate allowedTargets if present
+        if (chainableWorkflows.allowedTargets !== undefined) {
+          if (!Array.isArray(chainableWorkflows.allowedTargets)) {
+            return NextResponse.json(
+              {
+                status: 400,
+                message: 'chainableWorkflows.allowedTargets must be an array'
+              },
+              { status: 400 }
+            );
+          }
+          // Validate all items are numbers
+          if (
+            !chainableWorkflows.allowedTargets.every(
+              (id: number) => typeof id === 'number' && !isNaN(id)
+            )
+          ) {
+            return NextResponse.json(
+              {
+                status: 400,
+                message:
+                  'chainableWorkflows.allowedTargets must contain only numbers'
+              },
+              { status: 400 }
+            );
+          }
+        }
+
+        // Validate defaultDataMapping if present
+        if (chainableWorkflows.defaultDataMapping !== undefined) {
+          if (
+            typeof chainableWorkflows.defaultDataMapping !== 'object' ||
+            chainableWorkflows.defaultDataMapping === null ||
+            Array.isArray(chainableWorkflows.defaultDataMapping)
+          ) {
+            return NextResponse.json(
+              {
+                status: 400,
+                message:
+                  'chainableWorkflows.defaultDataMapping must be an object'
+              },
+              { status: 400 }
+            );
+          }
+          // Validate all values are strings
+          const mapping = chainableWorkflows.defaultDataMapping;
+          if (!Object.values(mapping).every((val) => typeof val === 'string')) {
+            return NextResponse.json(
+              {
+                status: 400,
+                message:
+                  'chainableWorkflows.defaultDataMapping values must be strings'
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
+
     // Prepare update data
     const updateData: {
       displayName?: string;
       displayDescription?: string;
       availableToUsers?: boolean;
       priceUsd?: number;
+      chainableWorkflows?: {
+        allowedTargets?: number[];
+        defaultDataMapping?: Record<string, string>;
+      } | null;
     } = {};
     if (displayName !== undefined) updateData.displayName = displayName;
     if (displayDescription !== undefined)
       updateData.displayDescription = displayDescription;
     if (availableToUsers !== undefined)
       updateData.availableToUsers = availableToUsers;
+    if (chainableWorkflows !== undefined)
+      updateData.chainableWorkflows = chainableWorkflows;
 
     // Handle priceUsd if provided
     if (priceUsd !== undefined) {
-
       // Simple validation - just check if it's a positive number
       if (typeof priceUsd === 'number' && priceUsd >= 0) {
         updateData.priceUsd = priceUsd;

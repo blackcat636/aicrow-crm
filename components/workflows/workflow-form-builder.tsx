@@ -64,6 +64,7 @@ function createEmptyField(type: WorkflowFormFieldType, index: number): EditableF
     label: "New field",
     type,
     required: false,
+    hidden: false,
     defaultValue: null,
     options: type === "dropdown" ? [{ label: "Option 1", value: "" }] : undefined,
     validation: {},
@@ -252,6 +253,15 @@ function SortableFieldCard({
               onCheckedChange={(checked) => handleBasicChange("required", checked)}
             />
             <Label htmlFor={`${field.id}-required`}>Required</Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`${field.id}-hidden`}
+              checked={field.hidden || false}
+              onCheckedChange={(checked) => handleBasicChange("hidden", checked)}
+            />
+            <Label htmlFor={`${field.id}-hidden`}>Hidden</Label>
           </div>
 
           {field.type === "file" && (

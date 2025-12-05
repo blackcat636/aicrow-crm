@@ -290,6 +290,59 @@ export function ExecutionsDataTable({
       ),
     },
     {
+      id: "workflowId",
+      accessorFn: (row) => {
+        return row.workflow?.id || null
+      },
+      filterFn: ((row, columnId, filterValue) => {
+        const execution = row.original as Execution
+        const workflowId = execution.workflow?.id
+        if (!workflowId) return false
+        
+        const workflowIdString = String(workflowId)
+        const searchValue = String(filterValue || '').toLowerCase().trim()
+        
+        if (!searchValue) return true
+        
+        return workflowIdString.includes(searchValue)
+      }) as FilterFn<Execution>,
+      enableGlobalFilter: true,
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 px-2 lg:px-3"
+          >
+            Workflow ID
+            {column.getIsSorted() === "asc" ? (
+              <IconArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <IconArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <IconArrowsUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const workflowId = row.original.workflow?.id;
+        if (!workflowId) {
+          return <div className="w-24 text-muted-foreground">-</div>;
+        }
+        return (
+          <div className="w-24">
+            <Link 
+              href={`/workflows/${workflowId}`}
+              className="font-medium text-primary hover:underline"
+            >
+              {String(workflowId)}
+            </Link>
+          </div>
+        );
+      },
+    },
+    {
       id: "workflow",
       accessorFn: (row) => {
         return row.workflow?.name || row.workflowName || 'Unknown'

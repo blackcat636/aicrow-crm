@@ -3,7 +3,8 @@ import {
   WorkflowsApiResponse,
   WorkflowApiResponse,
   WorkflowUpdateRequest,
-  WorkflowFormConfig
+  WorkflowFormConfig,
+  ChainableWorkflowsConfig
 } from '@/interface/Workflow';
 
 // Remove trailing slash from API_URL to avoid double slashes
@@ -298,6 +299,46 @@ export async function getWebhookTemplateData(
       message: 'Network error',
       data: null
     };
+  }
+}
+
+export interface ChainableWorkflowsResponse {
+  status: number;
+  data: {
+    workflowId: number;
+    chainableWorkflows: ChainableWorkflowsConfig | null;
+  };
+  message?: string;
+}
+
+export async function getChainableWorkflows(
+  id: number
+): Promise<ChainableWorkflowsResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/workflows/${id}/chainable-workflows`
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message ||
+          `Failed to fetch chainable workflows for workflow ${id}`
+      );
+    }
+
+    const data = (await response.json()) as ChainableWorkflowsResponse;
+
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    } else {
+      throw new Error(
+        data.message || `Failed to fetch chainable workflows for workflow ${id}`
+      );
+    }
+  } catch (error) {
+    console.error('❌ API: Error in getChainableWorkflows:', error);
+    throw error;
   }
 }
 

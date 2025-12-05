@@ -19,11 +19,32 @@ import {
   IconCircleXFilled,
   IconTag,
   IconClock,
-  IconPlayerStop
+  IconPlayerStop,
+  IconX,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight
 } from '@tabler/icons-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EditWorkflowDialog } from '@/components/workflows/edit-workflow-dialog';
 import { WorkflowFormBuilder } from '@/components/workflows/workflow-form-builder';
+import { WorkflowMultiSelect } from '@/components/workflows/workflow-multi-select';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { updateWorkflow, getAllWorkflows, getChainableWorkflows } from '@/lib/api/workflows';
+import { ChainableWorkflowsConfig } from '@/interface/Workflow';
+import { toast } from 'sonner';
+import { IconCheck } from '@tabler/icons-react';
 import Link from 'next/link';
 
 export default function WorkflowDetailPage() {
@@ -35,6 +56,17 @@ export default function WorkflowDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingExecutions, setIsLoadingExecutions] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [executionsPage, setExecutionsPage] = useState(1);
+  const [executionsLimit, setExecutionsLimit] = useState(10);
+  const [executionsTotalPages, setExecutionsTotalPages] = useState(0);
+  
+  // Chainable Workflows state
+  const [chainableWorkflows, setChainableWorkflows] = useState<ChainableWorkflowsConfig | null>(null);
+  const [availableWorkflows, setAvailableWorkflows] = useState<Workflow[]>([]);
+  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(false);
+  const [isSavingChainable, setIsSavingChainable] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isLoadingChainable, setIsLoadingChainable] = useState(false);
 
   useEffect(() => {
     const fetchWorkflow = async () => {
@@ -46,6 +78,7 @@ export default function WorkflowDetailPage() {
         
         if (response.status === 200 && response.data) {
           setWorkflow(response.data);
+          setChainableWorkflows(response.data.chainableWorkflows || null);
         } else {
           setError(response.message || 'Failed to load workflow');
         }
@@ -68,10 +101,11 @@ export default function WorkflowDetailPage() {
       
       try {
         setIsLoadingExecutions(true);
-        const response = await getAllExecutions(1, 10, { workflowId: workflow.n8nId });
+        const response = await getAllExecutions(executionsPage, executionsLimit, { workflowId: workflow.n8nId });
         
         if (response.status === 200) {
           setExecutions(response.data.items);
+          setExecutionsTotalPages(response.data.totalPages || 0);
         }
       } catch (err) {
         console.error('Failed to fetch executions:', err);
@@ -81,7 +115,77 @@ export default function WorkflowDetailPage() {
     };
 
     fetchExecutions();
-  }, [workflow?.n8nId]);
+  }, [workflow?.n8nId, executionsPage, executionsLimit]);
+
+  // Load available workflows for chainable workflows
+  useEffect(() => {
+    if (workflow) {
+      fetchAvailableWorkflows();
+    }
+  }, [workflow]);
+
+  // Load chainable workflows configuration when Chain Management tab is opened
+  useEffect(() => {
+    if (activeTab === 'chain-management' && workflowId) {
+      const fetchChainableWorkflows = async () => {
+        setIsLoadingChainable(true);
+        try {
+          const response = await getChainableWorkflows(workflowId);
+          if (response.status === 200 && response.data) {
+            setChainableWorkflows(response.data.chainableWorkflows || null);
+          }
+        } catch (error) {
+          console.error('Error fetching chainable workflows:', error);
+          toast.error('Failed to load chainable workflows configuration');
+        } finally {
+          setIsLoadingChainable(false);
+        }
+      };
+
+      fetchChainableWorkflows();
+    }
+  }, [activeTab, workflowId]);
+
+  const fetchAvailableWorkflows = async () => {
+    setIsLoadingWorkflows(true);
+    try {
+      const response = await getAllWorkflows({ 
+        limit: 100,
+        active: true 
+      });
+      if (response.status === 200 || response.status === 0) {
+        setAvailableWorkflows(response.data.items);
+      }
+    } catch (error) {
+      console.error('Error fetching workflows:', error);
+    } finally {
+      setIsLoadingWorkflows(false);
+    }
+  };
+
+  const handleSaveChainableWorkflows = async () => {
+    if (!workflow) return;
+    
+    setIsSavingChainable(true);
+    try {
+      const result = await updateWorkflow(workflow.id, {
+        chainableWorkflows: chainableWorkflows
+      });
+      
+      if (result.status === 200) {
+        toast.success('Chainable workflows configuration saved successfully!');
+        setWorkflow(result.data);
+        setChainableWorkflows(result.data.chainableWorkflows || null);
+      } else {
+        toast.error(result.message || 'Failed to save chainable workflows');
+      }
+    } catch (error) {
+      console.error('Error saving chainable workflows:', error);
+      toast.error('Error saving chainable workflows');
+    } finally {
+      setIsSavingChainable(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -151,10 +255,11 @@ export default function WorkflowDetailPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="form-builder">Form Builder</TabsTrigger>
+            <TabsTrigger value="chain-management">Chain Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="flex flex-col gap-6">
@@ -402,7 +507,7 @@ export default function WorkflowDetailPage() {
                   </div>
                 ) : executions.length > 0 ? (
                   <div className="space-y-3">
-                    {executions.slice(0, 5).map((execution) => (
+                    {executions.map((execution) => (
                       <div
                         key={execution.id}
                         className="flex items-center justify-between rounded-lg border p-3"
@@ -456,15 +561,145 @@ export default function WorkflowDetailPage() {
                         </div>
                       </div>
                     ))}
-                    {executions.length > 5 && (
-                      <div className="pt-2 text-center">
-                        <Button variant="outline" asChild>
-                          <Link href={`/executions?workflowId=${workflow.n8nId}`}>
-                            View All Executions
-                          </Link>
-                        </Button>
+                    {executionsTotalPages > 1 && (
+                      <div className="flex items-center justify-between border-t pt-4">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="executions-per-page" className="text-sm">
+                            Rows per page:
+                          </Label>
+                          <Select
+                            value={`${executionsLimit}`}
+                            onValueChange={(value) => {
+                              setExecutionsLimit(Number(value));
+                              setExecutionsPage(1);
+                            }}
+                          >
+                            <SelectTrigger id="executions-per-page" className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[5, 10, 20, 50].map((size) => (
+                                <SelectItem key={size} value={`${size}`}>
+                                  {size}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          Page {executionsPage} of {executionsTotalPages}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            className="hidden h-8 w-8 p-0 lg:flex"
+                            onClick={() => setExecutionsPage(1)}
+                            disabled={executionsPage === 1 || isLoadingExecutions}
+                          >
+                            <span className="sr-only">Go to first page</span>
+                            <IconChevronsLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="size-8"
+                            size="icon"
+                            onClick={() => setExecutionsPage(prev => Math.max(1, prev - 1))}
+                            disabled={executionsPage === 1 || isLoadingExecutions}
+                          >
+                            <span className="sr-only">Previous page</span>
+                            <IconChevronLeft className="h-4 w-4" />
+                          </Button>
+                          
+                          {/* Page number buttons */}
+                          {(() => {
+                            const pageCount = executionsTotalPages;
+                            const currentPage = executionsPage;
+                            const maxVisible = 7;
+                            const pages: (number | string)[] = [];
+                            
+                            if (pageCount <= maxVisible) {
+                              // Show all pages
+                              for (let i = 1; i <= pageCount; i++) {
+                                pages.push(i);
+                              }
+                            } else {
+                              // Show first page
+                              if (currentPage <= 3) {
+                                for (let i = 1; i <= 5; i++) {
+                                  pages.push(i);
+                                }
+                                pages.push('...');
+                                pages.push(pageCount);
+                              }
+                              // Show middle pages
+                              else if (currentPage >= pageCount - 2) {
+                                pages.push(1);
+                                pages.push('...');
+                                for (let i = pageCount - 4; i <= pageCount; i++) {
+                                  pages.push(i);
+                                }
+                              }
+                              // Show around current
+                              else {
+                                pages.push(1);
+                                pages.push('...');
+                                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                                  pages.push(i);
+                                }
+                                pages.push('...');
+                                pages.push(pageCount);
+                              }
+                            }
+                            
+                            return pages.map((page, idx) => (
+                              page === '...' ? (
+                                <span key={`ellipsis-${idx}`} className="px-2">
+                                  ...
+                                </span>
+                              ) : (
+                                <Button
+                                  key={page}
+                                  variant={currentPage === page ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setExecutionsPage(page as number)}
+                                  disabled={isLoadingExecutions}
+                                >
+                                  {page}
+                                </Button>
+                              )
+                            ));
+                          })()}
+                          
+                          <Button
+                            variant="outline"
+                            className="size-8"
+                            size="icon"
+                            onClick={() => setExecutionsPage(prev => Math.min(executionsTotalPages, prev + 1))}
+                            disabled={executionsPage >= executionsTotalPages || isLoadingExecutions}
+                          >
+                            <span className="sr-only">Next page</span>
+                            <IconChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="hidden size-8 lg:flex"
+                            size="icon"
+                            onClick={() => setExecutionsPage(executionsTotalPages)}
+                            disabled={executionsPage >= executionsTotalPages || isLoadingExecutions}
+                          >
+                            <span className="sr-only">Go to last page</span>
+                            <IconChevronsRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     )}
+                    <div className="pt-2 text-center">
+                      <Button variant="outline" asChild>
+                        <Link href={`/executions?workflowId=${workflow.n8nId}`}>
+                          View All Executions
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="py-8 text-center text-muted-foreground">
@@ -477,6 +712,228 @@ export default function WorkflowDetailPage() {
 
           <TabsContent value="form-builder" className="flex flex-col gap-4">
             <WorkflowFormBuilder workflow={workflow} />
+          </TabsContent>
+
+          <TabsContent value="chain-management" className="flex flex-col gap-4">
+            {/* Chainable Workflows Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconSettings className="h-4 w-4" />
+                  Chainable Workflows Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure which workflows can receive results from this workflow
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingChainable ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      Loading chainable workflows configuration...
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="enableChainableWorkflows"
+                        checked={chainableWorkflows !== null}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setChainableWorkflows({
+                              allowedTargets: [],
+                              defaultDataMapping: {}
+                            });
+                          } else {
+                            setChainableWorkflows(null);
+                          }
+                        }}
+                      />
+                      <Label htmlFor="enableChainableWorkflows" className="text-base font-medium cursor-pointer">
+                        Configure workflow chains
+                      </Label>
+                    </div>
+                    {chainableWorkflows !== null && (
+                      <Button
+                        onClick={handleSaveChainableWorkflows}
+                        disabled={isSavingChainable}
+                        size="sm"
+                      >
+                        {isSavingChainable ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <IconCheck className="h-4 w-4 mr-2" />
+                            Save
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-10">
+                    If enabled, restricts which workflows can receive results from this workflow.
+                    If disabled, users can chain to any attached workflow.
+                  </p>
+                </div>
+
+                {chainableWorkflows !== null && (
+                  <div className="space-y-6 pt-4 border-t">
+                    {/* Add Child Workflows */}
+                    <div className="space-y-2">
+                      <Label className="text-base">Add Child Workflows</Label>
+                      {isLoadingWorkflows ? (
+                        <p className="text-sm text-muted-foreground">Loading workflows...</p>
+                      ) : (
+                        <WorkflowMultiSelect
+                          workflows={availableWorkflows}
+                          selectedIds={chainableWorkflows.allowedTargets || []}
+                          currentWorkflowId={workflow.id}
+                          onChange={(selectedIds) => {
+                            setChainableWorkflows({
+                              ...chainableWorkflows,
+                              allowedTargets: selectedIds
+                            });
+                          }}
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Select child workflows that can receive results from this workflow.
+                      </p>
+                    </div>
+
+                    <Separator />
+
+                    {/* Configure Child Workflows */}
+                    {chainableWorkflows.allowedTargets && chainableWorkflows.allowedTargets.length > 0 && (
+                      <div className="space-y-4">
+                        <Label className="text-base">Configure Child Workflows</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Configure data transfer processing for each child workflow.
+                        </p>
+                        
+                        {chainableWorkflows.allowedTargets.map((childWorkflowId) => {
+                          const childWorkflow = availableWorkflows.find(w => w.id === childWorkflowId);
+                          const workflowName = childWorkflow?.displayName || childWorkflow?.name || `Workflow #${childWorkflowId}`;
+                          
+                          // Get mapping for this specific workflow
+                          // Structure: defaultDataMapping is stored as { [workflowId]: { mapping } }
+                          const currentMapping = chainableWorkflows.defaultDataMapping || {};
+                          let workflowMapping: Record<string, string> = {};
+                          
+                          if (typeof currentMapping === 'object' && currentMapping !== null && !Array.isArray(currentMapping)) {
+                            // Check if it's stored per workflow: { [workflowId]: { mapping } }
+                            if (currentMapping[childWorkflowId] && typeof currentMapping[childWorkflowId] === 'object') {
+                              workflowMapping = currentMapping[childWorkflowId] as Record<string, string>;
+                            } else if (Object.keys(currentMapping).length > 0) {
+                              // Legacy: single mapping object used for all workflows
+                              // Check if keys are not numeric (workflow IDs) - then it's a legacy mapping
+                              const keys = Object.keys(currentMapping);
+                              if (keys.every(k => isNaN(Number(k)))) {
+                                workflowMapping = currentMapping as Record<string, string>;
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <Card key={childWorkflowId}>
+                              <CardHeader>
+                                <CardTitle className="text-sm flex items-center justify-between">
+                                  <span>{workflowName} (ID: {childWorkflowId})</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const newTargets = (chainableWorkflows.allowedTargets || []).filter(id => id !== childWorkflowId);
+                                      // Also remove mapping for this workflow
+                                      const currentMapping = chainableWorkflows.defaultDataMapping || {};
+                                      const updatedMapping = { ...currentMapping };
+                                      if (updatedMapping[childWorkflowId]) {
+                                        delete updatedMapping[childWorkflowId];
+                                      }
+                                      
+                                      setChainableWorkflows({
+                                        ...chainableWorkflows,
+                                        allowedTargets: newTargets,
+                                        defaultDataMapping: Object.keys(updatedMapping).length > 0 ? updatedMapping : {}
+                                      });
+                                    }}
+                                  >
+                                    <IconX className="h-4 w-4" />
+                                  </Button>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                <Label className="text-sm">Data Transfer Processing (JSON)</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Configure how data should be transformed when chaining to this workflow.
+                                </p>
+                                <Textarea
+                                  value={
+                                    typeof workflowMapping === 'object' && workflowMapping !== null && Object.keys(workflowMapping).length > 0
+                                      ? JSON.stringify(workflowMapping, null, 2)
+                                      : ''
+                                  }
+                                  onChange={(e) => {
+                                    try {
+                                      const value = e.target.value.trim();
+                                      let parsed: Record<string, string> = {};
+                                      
+                                      if (value === '' || value === '{}') {
+                                        parsed = {};
+                                      } else {
+                                        parsed = JSON.parse(value);
+                                      }
+                                      
+                                      // Update mapping for this specific workflow
+                                      // Store as: { [workflowId]: { mapping } }
+                                      const currentMapping = chainableWorkflows.defaultDataMapping || {};
+                                      const updatedMapping = {
+                                        ...currentMapping,
+                                        [childWorkflowId]: parsed
+                                      };
+                                      
+                                      setChainableWorkflows({
+                                        ...chainableWorkflows,
+                                        defaultDataMapping: updatedMapping
+                                      });
+                                    } catch {
+                                      // Invalid JSON - keep the text but don't update the mapping
+                                      // User can fix it
+                                    }
+                                  }}
+                                  placeholder='{"prompt": "{{resultData.data.text}}", "imageUrl": "{{resultData.data.imageUrl}}"}'
+                                  rows={6}
+                                  className="font-mono text-sm"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Use template syntax: {"{{resultData.path.to.data}}"} to reference result data.
+                                </p>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {(!chainableWorkflows.allowedTargets || chainableWorkflows.allowedTargets.length === 0) && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="text-sm">No child workflows added yet.</p>
+                        <p className="text-xs mt-1">Add child workflows above to configure them.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

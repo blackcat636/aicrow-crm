@@ -70,6 +70,30 @@ export async function getUserWorkflowByWorkflowId(
     );
 
     if (!response.ok) {
+      // If 404, return a response object instead of throwing
+      // This endpoint may not be available on backend
+      if (response.status === 404) {
+        return {
+          status: 404,
+          message: 'User workflow not found',
+          data: {
+            id: 0,
+            userId: 0,
+            workflowId: workflowId,
+            instanceId: 0,
+            name: '',
+            description: null,
+            isActive: false,
+            scheduleType: null,
+            scheduleConfig: null,
+            lastExecutedAt: null,
+            nextExecutionAt: null,
+            createdAt: '',
+            updatedAt: ''
+          }
+        };
+      }
+      
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || 'Failed to fetch user workflow');
     }
@@ -82,7 +106,27 @@ export async function getUserWorkflowByWorkflowId(
       throw new Error(result.message || 'Failed to fetch user workflow');
     }
   } catch (error) {
-    throw error;
+    // If network error or other error, return 404 response instead of throwing
+    // This allows the calling code to handle missing user workflow gracefully
+    return {
+      status: 404,
+      message: error instanceof Error ? error.message : 'Failed to fetch user workflow',
+      data: {
+        id: 0,
+        userId: 0,
+        workflowId: workflowId,
+        instanceId: 0,
+        name: '',
+        description: null,
+        isActive: false,
+        scheduleType: null,
+        scheduleConfig: null,
+        lastExecutedAt: null,
+        nextExecutionAt: null,
+        createdAt: '',
+        updatedAt: ''
+      }
+    };
   }
 }
 
