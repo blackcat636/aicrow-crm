@@ -207,9 +207,11 @@ export default function AuditLogsPage() {
         filters.dateTo = dateToValue;
       }
 
-      const successValue = overrides?.success !== undefined ? overrides.success : successFilter;
-      if (successValue && successValue !== 'all') {
-        filters.success = successValue === 'true';
+      // Handle success filter: overrides can be boolean, state is string
+      if (overrides?.success !== undefined) {
+        filters.success = overrides.success;
+      } else if (successFilter && successFilter !== 'all') {
+        filters.success = successFilter === 'true';
       }
 
       const searchValue = (overrides?.search !== undefined ? overrides.search : searchInput)?.trim();
@@ -217,9 +219,11 @@ export default function AuditLogsPage() {
         filters.search = searchValue;
       }
 
-      const isAdminActionValue = overrides?.isAdminAction !== undefined ? overrides.isAdminAction : isAdminActionFilter;
-      if (isAdminActionValue && isAdminActionValue !== 'all') {
-        filters.isAdminAction = isAdminActionValue === 'true';
+      // Handle isAdminAction filter: overrides can be boolean, state is string
+      if (overrides?.isAdminAction !== undefined) {
+        filters.isAdminAction = overrides.isAdminAction;
+      } else if (isAdminActionFilter && isAdminActionFilter !== 'all') {
+        filters.isAdminAction = isAdminActionFilter === 'true';
       }
 
       const isSystemValue = overrides?.isSystem !== undefined ? overrides.isSystem : isSystemFilter;
@@ -481,7 +485,9 @@ export default function AuditLogsPage() {
               value={actionTypeFilter}
               onValueChange={(value) => {
                 setActionTypeFilter(value);
-                applyFilters({ page: 1, actionType: value === 'all' ? undefined : value });
+                setTimeout(() => {
+                  applyFilters({ page: 1, actionType: value === 'all' ? undefined : value });
+                }, 0);
               }}
             >
               <SelectTrigger id="actionType" className="w-48">
@@ -506,7 +512,9 @@ export default function AuditLogsPage() {
               value={successFilter}
               onValueChange={(value) => {
                 setSuccessFilter(value);
-                applyFilters({ page: 1, success: value === 'all' ? undefined : value === 'true' });
+                setTimeout(() => {
+                  applyFilters({ page: 1, success: value === 'all' ? undefined : value === 'true' });
+                }, 0);
               }}
             >
               <SelectTrigger id="success" className="w-32">
@@ -528,7 +536,9 @@ export default function AuditLogsPage() {
               value={isAdminActionFilter}
               onValueChange={(value) => {
                 setIsAdminActionFilter(value);
-                applyFilters({ page: 1, isAdminAction: value === 'all' ? undefined : value === 'true' });
+                setTimeout(() => {
+                  applyFilters({ page: 1, isAdminAction: value === 'all' ? undefined : value === 'true' });
+                }, 0);
               }}
             >
               <SelectTrigger id="isAdminAction" className="w-40">
@@ -552,7 +562,9 @@ export default function AuditLogsPage() {
                 setIsSystemFilter(value);
                 // If 'false' or 'all', don't filter (show all events)
                 // Only filter when explicitly set to 'true' (show only system events)
-                applyFilters({ page: 1, isSystem: value === 'true' ? true : undefined });
+                setTimeout(() => {
+                  applyFilters({ page: 1, isSystem: value === 'true' ? true : undefined });
+                }, 0);
               }}
             >
               <SelectTrigger id="isSystem" className="w-40">

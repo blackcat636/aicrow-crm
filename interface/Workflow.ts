@@ -82,7 +82,7 @@ export interface WorkflowFormField {
   /** Whether the field should be hidden from the form */
   hidden?: boolean;
   /** Default value in a type-appropriate format */
-  defaultValue?: string | number | boolean | string[] | null;
+  defaultValue?: string | number | boolean | null;
   /** Dropdown options (only for dropdown type) */
   options?: WorkflowFormFieldOption[];
   /** Validation rules depending on field type */

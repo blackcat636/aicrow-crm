@@ -78,7 +78,10 @@ function createEmptyField(type: WorkflowFormFieldType, index: number): EditableF
   }
 
   if (type === "enum") {
-    base.defaultValue = [];
+    base.validation = {
+      min: 1,
+      max: 5,
+    };
   }
 
   return base;
@@ -368,73 +371,8 @@ function SortableFieldCard({
               placeholder="user@example.com"
             />
           ) : field.type === "enum" ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Enum values</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    const currentValues = Array.isArray(field.defaultValue) 
-                      ? field.defaultValue 
-                      : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : []);
-                    handleBasicChange("defaultValue", [...currentValues, ""]);
-                  }}
-                >
-                  <IconPlus className="mr-1 h-4 w-4" />
-                  Add value
-                </Button>
-              </div>
-              {Array.isArray(field.defaultValue) && field.defaultValue.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No values yet. Add at least one.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {(Array.isArray(field.defaultValue) 
-                    ? field.defaultValue 
-                    : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : [])
-                  ).map((value, idx) => (
-                    <div
-                      key={`${field.id}-enum-${idx}`}
-                      className="flex items-center gap-2"
-                    >
-                      <Input
-                        value={value}
-                        onChange={(e) => {
-                          const currentValues = Array.isArray(field.defaultValue) 
-                            ? field.defaultValue 
-                            : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : []);
-                          const updatedValues = [...currentValues];
-                          updatedValues[idx] = e.target.value;
-                          handleBasicChange("defaultValue", updatedValues);
-                        }}
-                        placeholder="Enter enum value"
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => {
-                          const currentValues = Array.isArray(field.defaultValue) 
-                            ? field.defaultValue 
-                            : (typeof field.defaultValue === "string" && field.defaultValue ? [field.defaultValue] : []);
-                          const updatedValues = currentValues.filter((_, index) => index !== idx);
-                          handleBasicChange("defaultValue", updatedValues.length > 0 ? updatedValues : []);
-                        }}
-                      >
-                        <IconTrash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Multiple text values that will be sent as an array.
-              </p>
+            <div className="text-xs text-muted-foreground">
+              Enum field - configure min/max selection count in Validation section below.
             </div>
           ) : (
             <Input
@@ -454,17 +392,40 @@ function SortableFieldCard({
             </div>
           )}
 
-          {(field.type === "text" || field.type === "textarea" || field.type === "enum") && (
-            <div className="space-y-1">
-              <Label htmlFor={`${field.id}-regex`} className="text-xs">
-                Regex pattern
-              </Label>
-              <Input
-                id={`${field.id}-regex`}
-                value={field.validation?.regex ?? ""}
-                onChange={(e) => handleValidationChange("regex", e.target.value)}
-                placeholder="e.g. ^[A-Za-z0-9_]+$"
-              />
+          {field.type === "enum" && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor={`${field.id}-min`} className="text-xs">
+                  Minimum selections
+                </Label>
+                <Input
+                  id={`${field.id}-min`}
+                  type="number"
+                  min="1"
+                  value={field.validation?.min ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? undefined : Number(e.target.value);
+                    handleValidationChange("min", value);
+                  }}
+                  placeholder="e.g. 1"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`${field.id}-max`} className="text-xs">
+                  Maximum selections
+                </Label>
+                <Input
+                  id={`${field.id}-max`}
+                  type="number"
+                  min="1"
+                  value={field.validation?.max ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? undefined : Number(e.target.value);
+                    handleValidationChange("max", value);
+                  }}
+                  placeholder="e.g. 5"
+                />
+              </div>
             </div>
           )}
 
@@ -711,21 +672,6 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
             ...field,
             order: index,
             defaultValue: numValue,
-          };
-        }
-        
-        // For enum fields, ensure defaultValue is an array of strings
-        if (field.type === "enum") {
-          let enumValue: string[] = [];
-          if (Array.isArray(field.defaultValue)) {
-            enumValue = field.defaultValue.filter(v => v && v.trim() !== "");
-          } else if (typeof field.defaultValue === "string" && field.defaultValue.trim() !== "") {
-            enumValue = [field.defaultValue];
-          }
-          return {
-            ...field,
-            order: index,
-            defaultValue: enumValue.length > 0 ? enumValue : [],
           };
         }
         
