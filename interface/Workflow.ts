@@ -50,6 +50,7 @@ export type WorkflowFormFieldType =
   | 'number'
   | 'boolean'
   | 'dropdown'
+  | 'radio'
   | 'file'
   | 'date'
   | 'datetime'
@@ -83,7 +84,7 @@ export interface WorkflowFormField {
   hidden?: boolean;
   /** Default value in a type-appropriate format */
   defaultValue?: string | number | boolean | null;
-  /** Dropdown options (only for dropdown type) */
+  /** Dropdown/Radio options (for dropdown and radio types) */
   options?: WorkflowFormFieldOption[];
   /** Validation rules depending on field type */
   validation?: WorkflowFormFieldValidation;

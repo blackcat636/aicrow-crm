@@ -66,7 +66,7 @@ function createEmptyField(type: WorkflowFormFieldType, index: number): EditableF
     required: false,
     hidden: false,
     defaultValue: null,
-    options: type === "dropdown" ? [{ label: "Option 1", value: "" }] : undefined,
+    options: (type === "dropdown" || type === "radio") ? [{ label: "Option 1", value: "" }] : undefined,
     validation: {},
     multiple: false,
     accept: type === "file" ? "image/*,video/*,audio/*,application/pdf" : undefined,
@@ -123,7 +123,7 @@ function SortableFieldCard({
   };
 
   const handleAddOption = () => {
-    if (field.type !== "dropdown") return;
+    if (field.type !== "dropdown" && field.type !== "radio") return;
     const nextOptions = [...(field.options || [])];
     const newIndex = nextOptions.length + 1;
     nextOptions.push({
@@ -134,7 +134,7 @@ function SortableFieldCard({
   };
 
   const handleOptionChange = (idx: number, key: "label" | "value", value: string) => {
-    if (field.type !== "dropdown" || !field.options) return;
+    if ((field.type !== "dropdown" && field.type !== "radio") || !field.options) return;
     const nextOptions = field.options.map((opt, index) =>
       index === idx ? { ...opt, [key]: value } : opt,
     );
@@ -142,7 +142,7 @@ function SortableFieldCard({
   };
 
   const handleRemoveOption = (idx: number) => {
-    if (field.type !== "dropdown" || !field.options) return;
+    if ((field.type !== "dropdown" && field.type !== "radio") || !field.options) return;
     const nextOptions = field.options
       .filter((_, index) => index !== idx)
       .map((opt, index) => ({
@@ -161,6 +161,7 @@ function SortableFieldCard({
     number: "Number",
     boolean: "Boolean",
     dropdown: "Dropdown",
+    radio: "Radio",
     file: "File Upload",
     date: "Date",
     datetime: "DateTime",
@@ -271,14 +272,20 @@ function SortableFieldCard({
             <Label htmlFor={`${field.id}-hidden`}>Hidden</Label>
           </div>
 
-          {field.type === "file" && (
+          {(field.type === "file" || field.type === "dropdown" || field.type === "radio") && (
             <div className="flex items-center space-x-2">
               <Switch
                 id={`${field.id}-multiple`}
                 checked={field.multiple || false}
                 onCheckedChange={(checked) => handleBasicChange("multiple", checked)}
               />
-              <Label htmlFor={`${field.id}-multiple`}>Allow multiple</Label>
+              <Label htmlFor={`${field.id}-multiple`}>
+                {field.type === "file" 
+                  ? "Allow multiple" 
+                  : field.type === "radio"
+                  ? "Allow multiple selection"
+                  : "Allow multiple selection"}
+              </Label>
             </div>
           )}
         </div>
@@ -327,7 +334,7 @@ function SortableFieldCard({
               value={typeof field.defaultValue === "string" ? field.defaultValue : ""}
               onChange={(e) => handleBasicChange("defaultValue", e.target.value)}
             />
-          ) : field.type === "dropdown" ? (
+          ) : field.type === "dropdown" || field.type === "radio" ? (
             <Select
               value={
                 typeof field.defaultValue === "string" && field.defaultValue !== ""
@@ -473,8 +480,8 @@ function SortableFieldCard({
           )}
         </div>
 
-        {/* Dropdown values */}
-        {field.type === "dropdown" && (
+        {/* Dropdown/Radio values */}
+        {(field.type === "dropdown" || field.type === "radio") && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Values</Label>
@@ -640,8 +647,8 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
     setIsSaving(true);
     try {
       const normalizedFields = fields.map((field, index) => {
-        // For dropdown fields, set label equal to value for each option
-        if (field.type === "dropdown" && field.options) {
+        // For dropdown and radio fields, set label equal to value for each option
+        if ((field.type === "dropdown" || field.type === "radio") && field.options) {
           const normalizedOptions = field.options.map((opt) => ({
             ...opt,
             label: opt.value || opt.label, // Use value as label when saving
@@ -785,6 +792,14 @@ export function WorkflowFormBuilder({ workflow }: WorkflowFormBuilderProps) {
               onClick={() => handleAddField("dropdown")}
             >
               Dropdown
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddField("radio")}
+            >
+              Radio
             </Button>
           </div>
 
