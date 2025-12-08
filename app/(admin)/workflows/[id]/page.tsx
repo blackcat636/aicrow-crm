@@ -67,6 +67,8 @@ export default function WorkflowDetailPage() {
   const [isSavingChainable, setIsSavingChainable] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoadingChainable, setIsLoadingChainable] = useState(false);
+  // Store raw JSON text for each workflow to allow editing even with invalid JSON
+  const [dataMappingTexts, setDataMappingTexts] = useState<Record<number, string>>({});
 
   useEffect(() => {
     const fetchWorkflow = async () => {
@@ -132,7 +134,32 @@ export default function WorkflowDetailPage() {
         try {
           const response = await getChainableWorkflows(workflowId);
           if (response.status === 200 && response.data) {
-            setChainableWorkflows(response.data.chainableWorkflows || null);
+            const config = response.data.chainableWorkflows || null;
+            setChainableWorkflows(config);
+            // Initialize data mapping texts from the config
+            if (config?.defaultDataMapping && config.allowedTargets) {
+              const texts: Record<number, string> = {};
+              config.allowedTargets.forEach((workflowId) => {
+                const mapping = config.defaultDataMapping || {};
+                let workflowMapping: Record<string, string> = {};
+                
+                if (typeof mapping === 'object' && mapping !== null && !Array.isArray(mapping)) {
+                  if (mapping[workflowId] && typeof mapping[workflowId] === 'object') {
+                    workflowMapping = mapping[workflowId] as Record<string, string>;
+                  } else if (Object.keys(mapping).length > 0) {
+                    const keys = Object.keys(mapping);
+                    if (keys.every(k => isNaN(Number(k)))) {
+                      workflowMapping = mapping as Record<string, string>;
+                    }
+                  }
+                }
+                
+                texts[workflowId] = Object.keys(workflowMapping).length > 0
+                  ? JSON.stringify(workflowMapping, null, 2)
+                  : '';
+              });
+              setDataMappingTexts(texts);
+            }
           }
         } catch (error) {
           console.error('Error fetching chainable workflows:', error);
@@ -748,8 +775,10 @@ export default function WorkflowDetailPage() {
                               allowedTargets: [],
                               defaultDataMapping: {}
                             });
+                            setDataMappingTexts({});
                           } else {
                             setChainableWorkflows(null);
+                            setDataMappingTexts({});
                           }
                         }}
                       />
@@ -799,6 +828,16 @@ export default function WorkflowDetailPage() {
                             setChainableWorkflows({
                               ...chainableWorkflows,
                               allowedTargets: selectedIds
+                            });
+                            // Clear texts for removed workflows
+                            setDataMappingTexts(prev => {
+                              const newTexts = { ...prev };
+                              Object.keys(newTexts).forEach(key => {
+                                if (!selectedIds.includes(Number(key))) {
+                                  delete newTexts[Number(key)];
+                                }
+                              });
+                              return newTexts;
                             });
                           }}
                         />
@@ -875,20 +914,29 @@ export default function WorkflowDetailPage() {
                                   Configure how data should be transformed when chaining to this workflow.
                                 </p>
                                 <Textarea
-                                  value={
+                                  value={dataMappingTexts[childWorkflowId] ?? (
                                     typeof workflowMapping === 'object' && workflowMapping !== null && Object.keys(workflowMapping).length > 0
                                       ? JSON.stringify(workflowMapping, null, 2)
                                       : ''
-                                  }
+                                  )}
                                   onChange={(e) => {
+                                    const value = e.target.value;
+                                    
+                                    // Always update the text state to allow editing
+                                    setDataMappingTexts(prev => ({
+                                      ...prev,
+                                      [childWorkflowId]: value
+                                    }));
+                                    
+                                    // Try to parse and update the mapping if valid JSON
                                     try {
-                                      const value = e.target.value.trim();
+                                      const trimmed = value.trim();
                                       let parsed: Record<string, string> = {};
                                       
-                                      if (value === '' || value === '{}') {
+                                      if (trimmed === '' || trimmed === '{}') {
                                         parsed = {};
                                       } else {
-                                        parsed = JSON.parse(value);
+                                        parsed = JSON.parse(trimmed);
                                       }
                                       
                                       // Update mapping for this specific workflow
@@ -904,11 +952,11 @@ export default function WorkflowDetailPage() {
                                         defaultDataMapping: updatedMapping
                                       });
                                     } catch {
-                                      // Invalid JSON - keep the text but don't update the mapping
-                                      // User can fix it
+                                      // Invalid JSON - text is already saved in dataMappingTexts
+                                      // User can continue editing and fix it
                                     }
                                   }}
-                                  placeholder='{"prompt": "{{resultData.data.text}}", "imageUrl": "{{resultData.data.imageUrl}}"}'
+                                  placeholder='{"prompt": "{{resultData.data.text}}", "imageUrl": "{{resultData.data.imageUrl}}"}' 
                                   rows={6}
                                   className="font-mono text-sm"
                                 />
