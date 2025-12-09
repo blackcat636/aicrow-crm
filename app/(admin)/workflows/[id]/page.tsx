@@ -46,7 +46,6 @@ import { ChainableWorkflowsConfig } from '@/interface/Workflow';
 import { toast } from 'sonner';
 import { IconCheck } from '@tabler/icons-react';
 import Link from 'next/link';
-import { Checkbox } from '@/components/ui/checkbox';
 
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -190,10 +189,10 @@ export default function WorkflowDetailPage() {
           const response = await getSocialNetworks();
           console.log('Social networks response:', response);
           if (response.status === 200 || response.status === 0) {
-            // Handle both array and object with data property
-            const networks = Array.isArray(response.data) 
+            // Handle response data - it should be SocialNetwork[] according to the API
+            const networks: SocialNetwork[] = Array.isArray(response.data) 
               ? response.data 
-              : (response.data?.data || response.data || []);
+              : [];
             
             setSocialNetworks(networks);
             console.log('Set social networks:', networks);

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { fetchWithAuth } from '@/lib/api';
 
 export const runtime = 'edge';
 
 // GET /admin/automations/social-networks - Get list of available social networks
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Forward request to backend API
     const API_URL = (
