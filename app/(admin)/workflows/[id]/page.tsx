@@ -41,11 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { updateWorkflow, getAllWorkflows, getChainableWorkflows } from '@/lib/api/workflows';
+import { updateWorkflow, getAllWorkflows, getChainableWorkflows, getSocialNetworks, SocialNetwork } from '@/lib/api/workflows';
 import { ChainableWorkflowsConfig } from '@/interface/Workflow';
 import { toast } from 'sonner';
 import { IconCheck } from '@tabler/icons-react';
 import Link from 'next/link';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -69,6 +70,12 @@ export default function WorkflowDetailPage() {
   const [isLoadingChainable, setIsLoadingChainable] = useState(false);
   // Store raw JSON text for each workflow to allow editing even with invalid JSON
   const [dataMappingTexts, setDataMappingTexts] = useState<Record<number, string>>({});
+  
+  // Social Networks state
+  const [socialNetworks, setSocialNetworks] = useState<SocialNetwork[]>([]);
+  const [isLoadingSocialNetworks, setIsLoadingSocialNetworks] = useState(false);
+  const [allowedSocialNetworks, setAllowedSocialNetworks] = useState<string[]>([]);
+  const [isSavingSocialNetworks, setIsSavingSocialNetworks] = useState(false);
 
   useEffect(() => {
     const fetchWorkflow = async () => {
@@ -81,6 +88,7 @@ export default function WorkflowDetailPage() {
         if (response.status === 200 && response.data) {
           setWorkflow(response.data);
           setChainableWorkflows(response.data.chainableWorkflows || null);
+          setAllowedSocialNetworks(response.data.allowedSocialNetworks || []);
         } else {
           setError(response.message || 'Failed to load workflow');
         }
@@ -173,6 +181,37 @@ export default function WorkflowDetailPage() {
     }
   }, [activeTab, workflowId]);
 
+  // Load social networks when Social Networks tab is opened
+  useEffect(() => {
+    if (activeTab === 'social-networks') {
+      const fetchSocialNetworks = async () => {
+        setIsLoadingSocialNetworks(true);
+        try {
+          const response = await getSocialNetworks();
+          console.log('Social networks response:', response);
+          if (response.status === 200 || response.status === 0) {
+            // Handle both array and object with data property
+            const networks = Array.isArray(response.data) 
+              ? response.data 
+              : (response.data?.data || response.data || []);
+            
+            setSocialNetworks(networks);
+            console.log('Set social networks:', networks);
+          } else {
+            toast.error('Failed to load social networks');
+          }
+        } catch (error) {
+          console.error('Error fetching social networks:', error);
+          toast.error('Failed to load social networks');
+        } finally {
+          setIsLoadingSocialNetworks(false);
+        }
+      };
+
+      fetchSocialNetworks();
+    }
+  }, [activeTab]);
+
   const fetchAvailableWorkflows = async () => {
     setIsLoadingWorkflows(true);
     try {
@@ -211,6 +250,38 @@ export default function WorkflowDetailPage() {
       toast.error('Error saving chainable workflows');
     } finally {
       setIsSavingChainable(false);
+    }
+  };
+
+  const handleSaveSocialNetworks = async () => {
+    if (!workflow) return;
+    
+    setIsSavingSocialNetworks(true);
+    try {
+      const result = await updateWorkflow(workflow.id, {
+        allowedSocialNetworks: allowedSocialNetworks
+      });
+      
+      if (result.status === 200) {
+        toast.success('Social networks configuration saved successfully!');
+        setWorkflow(result.data);
+        setAllowedSocialNetworks(result.data.allowedSocialNetworks || []);
+      } else {
+        toast.error(result.message || 'Failed to save social networks');
+      }
+    } catch (error) {
+      console.error('Error saving social networks:', error);
+      toast.error('Error saving social networks');
+    } finally {
+      setIsSavingSocialNetworks(false);
+    }
+  };
+
+  const handleToggleAllowedSocialNetwork = (networkValue: string, checked: boolean) => {
+    if (checked) {
+      setAllowedSocialNetworks([...allowedSocialNetworks, networkValue]);
+    } else {
+      setAllowedSocialNetworks(allowedSocialNetworks.filter(v => v !== networkValue));
     }
   };
 
@@ -287,6 +358,7 @@ export default function WorkflowDetailPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="form-builder">Form Builder</TabsTrigger>
             <TabsTrigger value="chain-management">Chain Management</TabsTrigger>
+            <TabsTrigger value="social-networks">Social Networks</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="flex flex-col gap-6">
@@ -978,6 +1050,99 @@ export default function WorkflowDetailPage() {
                     )}
                   </div>
                 )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="social-networks" className="flex flex-col gap-4">
+            {/* Social Networks Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconSettings className="h-4 w-4" />
+                  Social Networks Configuration
+                </CardTitle>
+                <CardDescription>
+                  Select which social networks are available for this workflow
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingSocialNetworks ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      Loading social networks...
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Social Networks */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-base font-medium">Social Networks</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Select which social networks are available for this workflow. 
+                          Users will be able to choose from these options.
+                        </p>
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="max-h-64 overflow-y-auto space-y-3">
+                              {socialNetworks.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No social networks available
+                                </p>
+                              ) : (
+                                socialNetworks.map((network) => (
+                                  <div key={network.value} className="flex items-center space-x-2 py-2">
+                                    <Switch
+                                      id={`allowed-${network.value}`}
+                                      checked={allowedSocialNetworks.includes(network.value)}
+                                      onCheckedChange={(checked) => 
+                                        handleToggleAllowedSocialNetwork(network.value, checked)
+                                      }
+                                    />
+                                    <Label
+                                      htmlFor={`allowed-${network.value}`}
+                                      className="text-sm font-normal cursor-pointer"
+                                    >
+                                      {network.label}
+                                    </Label>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                        {allowedSocialNetworks.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {allowedSocialNetworks.length} network{allowedSocialNetworks.length !== 1 ? 's' : ''} selected
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="flex justify-end pt-4 border-t">
+                        <Button
+                          onClick={handleSaveSocialNetworks}
+                          disabled={isSavingSocialNetworks}
+                          size="sm"
+                        >
+                          {isSavingSocialNetworks ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <IconCheck className="h-4 w-4 mr-2" />
+                              Save
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </>
                 )}
               </CardContent>

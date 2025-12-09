@@ -6,6 +6,8 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from "next/navigation"
 import { useUserWorkflowsStore } from "@/store/useUserWorkflowsStore"
 import { useWorkflowsStore } from "@/store/useWorkflowsStore"
+import { getWorkflowById, getSocialNetworks, SocialNetwork } from "@/lib/api/workflows"
+import { Workflow } from "@/interface/Workflow"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
 import { IconArrowLeft, IconDeviceFloppy } from "@tabler/icons-react"
 import { toast } from "sonner"
 
@@ -42,10 +46,57 @@ export default function CreateUserWorkflowPage({ params }: PageProps) {
     isActive: true,
     scheduleType: 'manual' as 'manual' | 'cron' | 'interval',
   })
+  
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null)
+  const [socialNetworks, setSocialNetworks] = useState<SocialNetwork[]>([])
+  const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<string[]>([])
+  const [isLoadingSocialNetworks, setIsLoadingSocialNetworks] = useState(false)
 
   useEffect(() => {
     fetchWorkflows()
   }, [fetchWorkflows])
+
+  // Load workflow details and social networks when workflow is selected
+  useEffect(() => {
+    const loadWorkflowDetails = async () => {
+      if (!formData.workflowId) {
+        setSelectedWorkflow(null)
+        setSelectedSocialNetworks([])
+        return
+      }
+
+      try {
+        const workflowId = parseInt(formData.workflowId)
+        const workflow = workflows.find(w => w.id === workflowId)
+        
+        if (workflow) {
+          // Fetch full workflow details
+          const response = await getWorkflowById(workflowId)
+          if (response.status === 200 && response.data) {
+            setSelectedWorkflow(response.data)
+            // Initialize with empty selection
+            setSelectedSocialNetworks([])
+          } else {
+            setSelectedWorkflow(workflow)
+          }
+        }
+
+        // Load available social networks
+        setIsLoadingSocialNetworks(true)
+        const socialNetworksResponse = await getSocialNetworks()
+        if (socialNetworksResponse.status === 200 || socialNetworksResponse.status === 0) {
+          const networks = socialNetworksResponse.data || []
+          setSocialNetworks(networks)
+        }
+      } catch (error) {
+        console.error('Error loading workflow details:', error)
+      } finally {
+        setIsLoadingSocialNetworks(false)
+      }
+    }
+
+    loadWorkflowDetails()
+  }, [formData.workflowId, workflows])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -179,6 +230,63 @@ export default function CreateUserWorkflowPage({ params }: PageProps) {
                   <Label htmlFor="isActive">Active</Label>
                 </div>
               </div>
+
+              {/* Social Networks Selection */}
+              {selectedWorkflow && selectedWorkflow.allowedSocialNetworks && selectedWorkflow.allowedSocialNetworks.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">Social Networks</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Select social networks for this workflow
+                      </p>
+                      {isLoadingSocialNetworks ? (
+                        <p className="text-sm text-muted-foreground">Loading social networks...</p>
+                      ) : (
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              {socialNetworks
+                                .filter(network => selectedWorkflow.allowedSocialNetworks?.includes(network.value))
+                                .map((network) => {
+                                  const isSelected = selectedSocialNetworks.includes(network.value)
+                                  
+                                  return (
+                                    <div key={network.value} className="flex items-center space-x-2 py-2">
+                                      <Switch
+                                        id={`social-${network.value}`}
+                                        checked={isSelected}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedSocialNetworks([...selectedSocialNetworks, network.value])
+                                          } else {
+                                            setSelectedSocialNetworks(selectedSocialNetworks.filter(v => v !== network.value))
+                                          }
+                                        }}
+                                      />
+                                      <Label
+                                        htmlFor={`social-${network.value}`}
+                                        className="text-sm font-normal cursor-pointer"
+                                      >
+                                        {network.label}
+                                      </Label>
+                                    </div>
+                                  )
+                                })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      {selectedSocialNetworks.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {selectedSocialNetworks.length} network{selectedSocialNetworks.length !== 1 ? 's' : ''} selected
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-end gap-4">
                 <Button

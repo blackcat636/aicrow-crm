@@ -29,7 +29,9 @@ export async function PUT(
       displayDescription,
       availableToUsers,
       priceUsd,
-      chainableWorkflows
+      chainableWorkflows,
+      allowedSocialNetworks,
+      requiredSocialNetworks
     } = body;
 
     if (
@@ -37,7 +39,9 @@ export async function PUT(
       !displayDescription &&
       availableToUsers === undefined &&
       priceUsd === undefined &&
-      chainableWorkflows === undefined
+      chainableWorkflows === undefined &&
+      allowedSocialNetworks === undefined &&
+      requiredSocialNetworks === undefined
     ) {
       return NextResponse.json(
         {
@@ -125,6 +129,60 @@ export async function PUT(
       }
     }
 
+    // Validate allowedSocialNetworks if provided
+    if (allowedSocialNetworks !== undefined) {
+      if (!Array.isArray(allowedSocialNetworks)) {
+        return NextResponse.json(
+          {
+            status: 400,
+            message: 'allowedSocialNetworks must be an array'
+          },
+          { status: 400 }
+        );
+      }
+      // Validate all items are strings
+      if (
+        !allowedSocialNetworks.every(
+          (network: string) => typeof network === 'string'
+        )
+      ) {
+        return NextResponse.json(
+          {
+            status: 400,
+            message: 'allowedSocialNetworks must contain only strings'
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate requiredSocialNetworks if provided
+    if (requiredSocialNetworks !== undefined) {
+      if (!Array.isArray(requiredSocialNetworks)) {
+        return NextResponse.json(
+          {
+            status: 400,
+            message: 'requiredSocialNetworks must be an array'
+          },
+          { status: 400 }
+        );
+      }
+      // Validate all items are strings
+      if (
+        !requiredSocialNetworks.every(
+          (network: string) => typeof network === 'string'
+        )
+      ) {
+        return NextResponse.json(
+          {
+            status: 400,
+            message: 'requiredSocialNetworks must contain only strings'
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Prepare update data
     const updateData: {
       displayName?: string;
@@ -135,6 +193,8 @@ export async function PUT(
         allowedTargets?: number[];
         defaultDataMapping?: Record<string, string>;
       } | null;
+      allowedSocialNetworks?: string[];
+      requiredSocialNetworks?: string[];
     } = {};
     if (displayName !== undefined) updateData.displayName = displayName;
     if (displayDescription !== undefined)
@@ -143,6 +203,10 @@ export async function PUT(
       updateData.availableToUsers = availableToUsers;
     if (chainableWorkflows !== undefined)
       updateData.chainableWorkflows = chainableWorkflows;
+    if (allowedSocialNetworks !== undefined)
+      updateData.allowedSocialNetworks = allowedSocialNetworks;
+    if (requiredSocialNetworks !== undefined)
+      updateData.requiredSocialNetworks = requiredSocialNetworks;
 
     // Handle priceUsd if provided
     if (priceUsd !== undefined) {

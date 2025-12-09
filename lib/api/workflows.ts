@@ -342,6 +342,47 @@ export async function getChainableWorkflows(
   }
 }
 
+export interface SocialNetwork {
+  value: string;
+  label: string;
+}
+
+export interface SocialNetworksApiResponse {
+  status: number;
+  data: SocialNetwork[];
+  message?: string;
+}
+
+export async function getSocialNetworks(): Promise<SocialNetworksApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/automations/social-networks`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch social networks');
+    }
+
+    const data = (await response.json()) as SocialNetworksApiResponse;
+
+    // Check if successful status (200 or 0)
+    if (data.status === 200 || data.status === 0) {
+      return data;
+    } else {
+      throw new Error(
+        data.message || 'Failed to fetch social networks'
+      );
+    }
+  } catch (error) {
+    console.error('❌ API: Error in getSocialNetworks:', error);
+    return {
+      status: 0,
+      message: 'Network error',
+      data: []
+    };
+  }
+}
+
 export async function updateWorkflow(
   id: number,
   updateData: WorkflowUpdateRequest

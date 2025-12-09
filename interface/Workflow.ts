@@ -128,6 +128,10 @@ export interface Workflow {
   formConfig?: WorkflowFormConfig | null;
   /** Optional chainable workflows configuration */
   chainableWorkflows?: ChainableWorkflowsConfig | null;
+  /** List of allowed social networks for this workflow */
+  allowedSocialNetworks?: string[];
+  /** List of required social networks for this workflow */
+  requiredSocialNetworks?: string[];
   n8nCreatedAt: string;
   n8nUpdatedAt: string;
   syncedAt: string;
@@ -153,6 +157,8 @@ export interface WorkflowUpdateRequest {
   availableToUsers?: boolean;
   priceUsd?: number;
   chainableWorkflows?: ChainableWorkflowsConfig | null;
+  allowedSocialNetworks?: string[];
+  requiredSocialNetworks?: string[];
 }
 
 export interface WorkflowApiResponse {
