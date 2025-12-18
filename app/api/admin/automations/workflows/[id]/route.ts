@@ -29,6 +29,7 @@ export async function PUT(
       displayDescription,
       availableToUsers,
       priceUsd,
+      show,
       chainableWorkflows,
       allowedSocialNetworks,
       requiredSocialNetworks
@@ -39,6 +40,7 @@ export async function PUT(
       !displayDescription &&
       availableToUsers === undefined &&
       priceUsd === undefined &&
+      show === undefined &&
       chainableWorkflows === undefined &&
       allowedSocialNetworks === undefined &&
       requiredSocialNetworks === undefined
@@ -189,6 +191,7 @@ export async function PUT(
       displayDescription?: string;
       availableToUsers?: boolean;
       priceUsd?: number;
+      show?: number;
       chainableWorkflows?: {
         allowedTargets?: number[];
         defaultDataMapping?: Record<string, string>;
@@ -236,6 +239,25 @@ export async function PUT(
         },
         { status: 400 }
       );
+    }
+
+    // Handle show if provided
+    if (show !== undefined) {
+      // Convert boolean to number (true -> 1, false -> 0)
+      // Also handle if it's already a number
+      if (typeof show === 'boolean') {
+        updateData.show = show ? 1 : 0;
+      } else if (typeof show === 'number' && (show === 0 || show === 1)) {
+        updateData.show = show;
+      } else {
+        return NextResponse.json(
+          {
+            status: 400,
+            message: 'show must be a boolean or number (0 or 1)'
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Forward request to backend API

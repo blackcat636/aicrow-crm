@@ -119,6 +119,7 @@ export interface Workflow {
   availableToUsers?: boolean;
   priceUsd?: number;
   active: boolean;
+  show?: number | boolean; // 1 = true, 0 = false
   tags: string[];
   nodes: number;
   nodesData?: WorkflowNode[];
@@ -156,6 +157,7 @@ export interface WorkflowUpdateRequest {
   displayDescription?: string;
   availableToUsers?: boolean;
   priceUsd?: number;
+  show?: boolean | number; // 1 = true, 0 = false
   chainableWorkflows?: ChainableWorkflowsConfig | null;
   allowedSocialNetworks?: string[];
   requiredSocialNetworks?: string[];

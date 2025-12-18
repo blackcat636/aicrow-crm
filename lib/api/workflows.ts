@@ -17,9 +17,11 @@ export interface WorkflowFilters {
   limit?: number;
   instanceId?: number;
   id?: number;
+  n8nId?: string;
   active?: boolean;
   search?: string;
   availableToUsers?: boolean;
+  show?: string;
 }
 
 export async function getAllWorkflows(
@@ -30,9 +32,11 @@ export async function getAllWorkflows(
     limit = 20,
     instanceId,
     id,
+    n8nId,
     active,
     search,
-    availableToUsers
+    availableToUsers,
+    show
   } = filters;
 
   try {
@@ -45,6 +49,9 @@ export async function getAllWorkflows(
     if (id !== undefined) {
       params.set('id', id.toString());
     }
+    if (n8nId !== undefined && n8nId.trim()) {
+      params.set('n8nId', n8nId.trim());
+    }
     if (active !== undefined) {
       params.set('active', active.toString());
     }
@@ -53,6 +60,11 @@ export async function getAllWorkflows(
     }
     if (availableToUsers !== undefined) {
       params.set('availableToUsers', availableToUsers.toString());
+    }
+    if (show !== undefined) {
+      // Pass show as string: 'true', 'false', or 'all'
+      // Backend expects string values: "true", "false", or "all"
+      params.set('show', String(show));
     }
 
     const url = `${API_URL}/admin/automations/workflows?${params.toString()}`;

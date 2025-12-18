@@ -172,6 +172,34 @@ const columns: ColumnDef<Workflow>[] = [
     ),
   },
   {
+    accessorKey: "n8nId",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 px-2 lg:px-3"
+        >
+          n8n ID
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <IconArrowsUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      )
+    },
+    cell: ({ row }) => (
+      <div className="w-32">
+        <span className="text-sm font-medium">
+          {row.original.n8nId || 'N/A'}
+        </span>
+      </div>
+    ),
+  },
+  {
     accessorKey: "name",
     header: ({ column }) => {
       return (
@@ -270,6 +298,48 @@ const columns: ColumnDef<Workflow>[] = [
         </Badge>
       </div>
     ),
+  },
+  {
+    accessorKey: "show",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 px-2 lg:px-3"
+        >
+          Show
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <IconArrowsUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const showValue = row.original.show;
+      // Handle number: 1 = true, 0 = false
+      // Also handle boolean/string for backward compatibility
+      const isTrue = showValue === 1 || showValue === true || (typeof showValue === 'string' && (showValue === 'true' || showValue === '1'));
+      return (
+        <div className="w-32">
+          <Badge 
+            variant={isTrue ? "default" : "outline"} 
+            className="text-muted-foreground px-1.5"
+          >
+            {isTrue ? (
+              <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400 mr-1 h-3 w-3" />
+            ) : (
+              <IconCircleCheckFilled className="fill-red-500 dark:fill-red-400 mr-1 h-3 w-3" />
+            )}
+            {isTrue ? "True" : "False"}
+          </Badge>
+        </div>
+      );
+    },
   },
   {
     id: "instance",
@@ -415,9 +485,9 @@ const columns: ColumnDef<Workflow>[] = [
     id: "executions",
     header: "Executions",
     cell: ({ row }) => (
-      <div className="w-32">
-        <span className="text-sm">
-          {row.original.name || 'Unknown'}
+      <div className="w-48 min-w-[200px]">
+        <span className="text-sm truncate block" title={row.original.name || 'Unknown'}>
+          {row.original.displayName || row.original.name || 'Unknown'}
         </span>
       </div>
     ),

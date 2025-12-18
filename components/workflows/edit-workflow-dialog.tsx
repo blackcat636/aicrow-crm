@@ -33,6 +33,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
     displayDescription: workflow.displayDescription || '',
     availableToUsers: workflow.availableToUsers || false,
     priceUsd: Math.floor(workflow.priceUsd || 0),
+    show: workflow.show === 1 || workflow.show === true || (typeof workflow.show === 'string' && (workflow.show === 'true' || workflow.show === '1')),
   });
 
   // Reset form when dialog opens
@@ -44,6 +45,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
         displayDescription: workflow.displayDescription || '',
         availableToUsers: workflow.availableToUsers || false,
         priceUsd: Math.floor(workflow.priceUsd || 0),
+        show: workflow.show === 1 || workflow.show === true || (typeof workflow.show === 'string' && (workflow.show === 'true' || workflow.show === '1')),
       });
     }
   }, [open, workflow]);
@@ -77,6 +79,7 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
       displayDescription: workflow.displayDescription || '',
       availableToUsers: workflow.availableToUsers || false,
       priceUsd: Math.floor(workflow.priceUsd || 0),
+      show: workflow.show === 1 || workflow.show === true || (typeof workflow.show === 'string' && (workflow.show === 'true' || workflow.show === '1')),
     });
     setOpen(false);
   };
@@ -125,6 +128,15 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
                 id="availableToUsers"
                 checked={formData.availableToUsers}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, availableToUsers: checked }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show">Show</Label>
+              <Switch
+                id="show"
+                checked={formData.show}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show: checked }))}
               />
             </div>
 

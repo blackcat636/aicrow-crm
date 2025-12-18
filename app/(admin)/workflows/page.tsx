@@ -31,9 +31,11 @@ export default function Page() {
   
   // Local state for filter inputs
   const [workflowIdInput, setWorkflowIdInput] = useState<string>('');
+  const [n8nIdInput, setN8nIdInput] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [availableToUsersFilter, setAvailableToUsersFilter] = useState<string>('all');
+  const [showFilter, setShowFilter] = useState<string>('true');
   
   const previousUrlRef = useRef<string>('');
   const isInitializedRef = useRef(false);
@@ -52,14 +54,19 @@ export default function Page() {
         
         // Preserve existing filter params
         const urlWorkflowId = searchParams.get('workflowId');
+        const urlN8nId = searchParams.get('n8nId');
         const urlSearch = searchParams.get('search');
         const urlActive = searchParams.get('active');
         const urlAvailableToUsers = searchParams.get('availableToUsers');
+        const urlShow = searchParams.get('show');
         
         if (urlWorkflowId) params.set('workflowId', urlWorkflowId);
+        if (urlN8nId) params.set('n8nId', urlN8nId);
         if (urlSearch) params.set('search', urlSearch);
         if (urlActive) params.set('active', urlActive);
         if (urlAvailableToUsers) params.set('availableToUsers', urlAvailableToUsers);
+        // Always preserve show parameter, default to 'true' if not present
+        params.set('show', urlShow || 'true');
         
         const newUrl = `?${params.toString()}`;
         router.replace(`/workflows${newUrl}`, { scroll: false });
@@ -80,6 +87,7 @@ export default function Page() {
     const urlLimit = parseInt(searchParams.get('limit') || '20', 10);
     const rawWorkflowId = searchParams.get('workflowId');
     const sanitizedWorkflowId = sanitizeNumericId(rawWorkflowId);
+    const urlN8nId = searchParams.get('n8nId') || '';
 
     // If workflowId in URL містить нецифрові символи — виправляємо URL й не робимо запит з некоректним значенням
     if (rawWorkflowId !== null && sanitizedWorkflowId !== rawWorkflowId) {
@@ -98,12 +106,16 @@ export default function Page() {
     const urlSearch = searchParams.get('search') || '';
     const urlActive = searchParams.get('active') || 'all';
     const urlAvailableToUsers = searchParams.get('availableToUsers') || 'all';
+    // Get show from URL, default to 'true' if not present
+    const urlShow = searchParams.get('show') || 'true';
     
     // Update local state from URL
     setWorkflowIdInput(sanitizedWorkflowId);
+    setN8nIdInput(urlN8nId);
     setSearchInput(urlSearch);
     setActiveFilter(urlActive);
     setAvailableToUsersFilter(urlAvailableToUsers);
+    setShowFilter(urlShow);
     
     // Build filters object
     // Explicitly set undefined to clear filters when empty or "all" is selected
@@ -112,14 +124,17 @@ export default function Page() {
       page: urlPage,
       limit: urlLimit,
       id: sanitizedWorkflowId ? parseInt(sanitizedWorkflowId, 10) : undefined,
+      n8nId: urlN8nId || undefined,
       search: urlSearch || undefined,
       // Explicitly set undefined when "all" to clear the filter in store
       active: urlActive !== 'all' ? (urlActive === 'true') : undefined,
       availableToUsers: urlAvailableToUsers !== 'all' ? (urlAvailableToUsers === 'true') : undefined,
+      // Pass show as string: 'true', 'false', or 'all'
+      show: urlShow,
     };
 
     // Create URL string for comparison
-    const currentUrl = `page=${urlPage}&limit=${urlLimit}&workflowId=${sanitizedWorkflowId || ''}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}`;
+    const currentUrl = `page=${urlPage}&limit=${urlLimit}&workflowId=${sanitizedWorkflowId || ''}&n8nId=${urlN8nId}&search=${urlSearch}&active=${urlActive}&availableToUsers=${urlAvailableToUsers}&show=${urlShow}`;
     
     // Only fetch if URL actually changed
     if (previousUrlRef.current !== currentUrl) {
@@ -134,19 +149,20 @@ export default function Page() {
     params.set('limit', limit.toString());
 
     const sanitizedWorkflowId = sanitizeNumericId(workflowIdInput.trim());
+    const trimmedN8nId = n8nIdInput.trim();
     const trimmedSearch = searchInput.trim();
     
     if (sanitizedWorkflowId) params.set('workflowId', sanitizedWorkflowId);
+    if (trimmedN8nId) params.set('n8nId', trimmedN8nId);
     if (trimmedSearch) params.set('search', trimmedSearch);
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
+    // Always set show parameter to preserve user selection
+    params.set('show', showFilter);
 
-    // Update previousUrlRef to match the new URL before navigation
-    const newUrlString = `page=1&limit=${limit}&workflowId=${sanitizedWorkflowId || ''}&search=${trimmedSearch}&active=${activeFilter !== 'all' ? activeFilter : ''}&availableToUsers=${availableToUsersFilter !== 'all' ? availableToUsersFilter : ''}`;
-    previousUrlRef.current = newUrlString;
-
+    // Don't update previousUrlRef here - let useEffect handle it after URL change
     router.replace(`/workflows?${params.toString()}`, { scroll: false });
-  }, [workflowIdInput, searchInput, activeFilter, availableToUsersFilter, limit, router]);
+  }, [workflowIdInput, n8nIdInput, searchInput, activeFilter, availableToUsersFilter, showFilter, limit, router]);
 
   // Debounced search for text inputs
   useEffect(() => {
@@ -155,7 +171,7 @@ export default function Page() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [workflowIdInput, searchInput, updateFilters]);
+  }, [workflowIdInput, n8nIdInput, searchInput, updateFilters]);
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams();
@@ -164,9 +180,11 @@ export default function Page() {
 
     const sanitizedWorkflowId = sanitizeNumericId(workflowIdInput.trim());
     if (sanitizedWorkflowId) params.set('workflowId', sanitizedWorkflowId);
+    if (n8nIdInput.trim()) params.set('n8nId', n8nIdInput.trim());
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
+    params.set('show', showFilter);
 
     router.replace(`/workflows?${params.toString()}`, { scroll: false });
   };
@@ -178,9 +196,11 @@ export default function Page() {
 
     const sanitizedWorkflowId = sanitizeNumericId(workflowIdInput.trim());
     if (sanitizedWorkflowId) params.set('workflowId', sanitizedWorkflowId);
+    if (n8nIdInput.trim()) params.set('n8nId', n8nIdInput.trim());
     if (searchInput.trim()) params.set('search', searchInput.trim());
     if (activeFilter !== 'all') params.set('active', activeFilter);
     if (availableToUsersFilter !== 'all') params.set('availableToUsers', availableToUsersFilter);
+    params.set('show', showFilter);
 
     router.replace(`/workflows?${params.toString()}`, { scroll: false });
   };
@@ -216,6 +236,21 @@ export default function Page() {
               className="w-32"
               inputMode="numeric"
               pattern="\\d*"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Label htmlFor="n8nId" className="text-sm font-medium whitespace-nowrap">
+              n8n ID:
+            </Label>
+            <Input
+              id="n8nId"
+              type="text"
+              placeholder="n8n ID"
+              value={n8nIdInput}
+              onChange={(e) => setN8nIdInput(e.target.value)}
+              onBlur={updateFilters}
+              className="w-32"
             />
           </div>
           
@@ -264,6 +299,22 @@ export default function Page() {
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="true">Yes</SelectItem>
                 <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Label htmlFor="show" className="text-sm font-medium whitespace-nowrap">
+              Show:
+            </Label>
+            <Select value={showFilter} onValueChange={(value) => { setShowFilter(value); updateFilters(); }}>
+              <SelectTrigger id="show" className="w-32">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="true">True</SelectItem>
+                <SelectItem value="false">False</SelectItem>
               </SelectContent>
             </Select>
           </div>

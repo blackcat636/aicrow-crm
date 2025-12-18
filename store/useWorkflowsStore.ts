@@ -41,6 +41,8 @@ export const useWorkflowsStore = create<WorkflowsStore>((set, get) => ({
     if (mergedFilters.instanceId === null) mergedFilters.instanceId = undefined;
     if (mergedFilters.active === null) mergedFilters.active = undefined;
     if (mergedFilters.availableToUsers === null) mergedFilters.availableToUsers = undefined;
+    // Keep show as string ('true', 'false', or 'all') - don't convert to undefined
+    if (mergedFilters.show === null) mergedFilters.show = undefined;
     
     // Enforce API limit of 100
     const validLimit = Math.min(mergedFilters.limit || 20, 100);
