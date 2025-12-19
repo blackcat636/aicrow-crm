@@ -43,33 +43,42 @@ export function NavUser() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-full p-2 hover:bg-gray-100">
-          <Avatar>
-            <AvatarFallback>{user.username?.charAt(0)}</AvatarFallback>
+        <button className="flex items-center gap-2 rounded-lg p-2 w-full">
+          <Avatar className="">
+            <AvatarFallback className="bg-gradient-primary text-white font-semibold">
+              {user.username?.charAt(0).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
-          {!isMobile && <span className="text-sm font-medium">{user.username}</span>}
+          {!isMobile && (
+            <span className="text-sm font-medium flex-1 text-left">
+              {user.username}
+            </span>
+          )}
           <IconDotsVertical className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+      <DropdownMenuContent className="w-56 animate-fade-in-up">
+        <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer">
             <IconUserCircle className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer">
             <IconCreditCard className="mr-2 h-4 w-4" />
             <span>Payments</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer">
             <IconNotification className="mr-2 h-4 w-4" />
             <span>Notifications</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
+        <DropdownMenuItem 
+          onClick={handleLogout}
+          className="cursor-pointer text-destructive focus:text-destructive"
+        >
           <IconLogout className="mr-2 h-4 w-4" />
           <span>Logout</span>
         </DropdownMenuItem>

@@ -56,47 +56,59 @@ export function LoginForm() {
     }
 
     return (
-        <div className="w-full max-w-md space-y-8">
-            <div className="text-center">
-                <h2 className="text-2xl font-bold">Sign in to system</h2>
-                <p className="mt-2 text-sm text-gray-600">
-                    Enter your credentials to access the system
-                </p>
-            </div>
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                <div className="space-y-4">
-                    <div>
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            disabled={isLoading}
-                        />
-                    </div>
-                    <div>
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            disabled={isLoading}
-                        />
-                    </div>
+        <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+                <div className="animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+                    <Label htmlFor="email" className="text-sm font-medium">
+                        Email Address
+                    </Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        disabled={isLoading}
+                        className="mt-1.5"
+                    />
                 </div>
-                {error && (
-                    <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
-                        {error}
-                    </div>
+                <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                    <Label htmlFor="password" className="text-sm font-medium">
+                        Password
+                    </Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        disabled={isLoading}
+                        className="mt-1.5"
+                    />
+                </div>
+            </div>
+            {error && (
+                <div className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20 animate-fade-in-up">
+                    {error}
+                </div>
+            )}
+            <Button 
+                type="submit" 
+                className="w-full bg-gradient-primary hover:opacity-90 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in-up" 
+                disabled={isLoading}
+                style={{ animationDelay: '150ms' }}
+            >
+                {isLoading ? (
+                    <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Signing in...
+                    </span>
+                ) : (
+                    "Sign in"
                 )}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Loading..." : "Sign in"}
-                </Button>
-            </form>
-        </div>
+            </Button>
+        </form>
     )
 } 

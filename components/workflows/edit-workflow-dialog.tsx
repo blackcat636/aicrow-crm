@@ -87,43 +87,47 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <IconEdit className="h-4 w-4 mr-2" />
+        <Button variant="outline" size="sm" className="group">
+          <IconEdit className="h-4 w-4 mr-2 transition-transform group-hover:rotate-12 group-hover:scale-110" />
           Edit
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Workflow</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto backdrop-blur-xl border-border/50 shadow-2xl animate-fade-in-up">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+            Edit Workflow
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Update information for workflow &quot;{workflow.name}&quot;
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="displayName">Display Name</Label>
+        <form onSubmit={handleSubmit} className="space-y-1">
+          <div className="grid gap-5 py-4">
+            <div className="grid gap-2 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+              <Label htmlFor="displayName" className="font-medium">Display Name</Label>
               <Input
                 id="displayName"
                 value={formData.displayName}
                 onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                 placeholder="Enter display name"
+                className="transition-all duration-300"
               />
             </div>
             
-            <div className="grid gap-2">
-              <Label htmlFor="displayDescription">Description</Label>
+            <div className="grid gap-2 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <Label htmlFor="displayDescription" className="font-medium">Description</Label>
               <Textarea
                 id="displayDescription"
                 value={formData.displayDescription}
                 onChange={(e) => setFormData(prev => ({ ...prev, displayDescription: e.target.value }))}
                 placeholder="Enter workflow description"
                 rows={3}
+                className="transition-all duration-300"
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="availableToUsers">Available to Users</Label>
+            <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-border/80 transition-all duration-300 hover:shadow-md animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+              <Label htmlFor="availableToUsers" className="font-medium cursor-pointer">Available to Users</Label>
               <Switch
                 id="availableToUsers"
                 checked={formData.availableToUsers}
@@ -131,8 +135,8 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="show">Show</Label>
+            <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-border/80 transition-all duration-300 hover:shadow-md animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+              <Label htmlFor="show" className="font-medium cursor-pointer">Show</Label>
               <Switch
                 id="show"
                 checked={formData.show}
@@ -140,8 +144,8 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="priceUsd">Price (Token)</Label>
+            <div className="grid gap-2 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+              <Label htmlFor="priceUsd" className="font-medium">Price (Token)</Label>
               <Input
                 id="priceUsd"
                 type="number"
@@ -150,15 +154,16 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
                 value={formData.priceUsd}
                 onChange={(e) => setFormData(prev => ({ ...prev, priceUsd: Math.floor(parseInt(e.target.value) || 0) }))}
                 placeholder="0"
+                className="transition-all duration-300"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
-              <IconX className="h-4 w-4 mr-2" />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading} className="group">
+              <IconX className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="bg-gradient-primary group">
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -166,8 +171,8 @@ export function EditWorkflowDialog({ workflow, onWorkflowUpdated }: EditWorkflow
                 </>
               ) : (
                 <>
-                  <IconCheck className="h-4 w-4 mr-2" />
-                  Save
+                  <IconCheck className="h-4 w-4 mr-2 transition-transform group-hover:scale-110" />
+                  Save Changes
                 </>
               )}
             </Button>

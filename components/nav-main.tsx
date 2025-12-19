@@ -61,7 +61,7 @@ export function NavMain({
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
-          {items.map((item) => {
+          {items.map((item, index) => {
             const isActive = pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))
             const hasSubItems = item.items && item.items.length > 0
             
@@ -69,7 +69,11 @@ export function NavMain({
               const isExpanded = expandedItems.includes(item.title)
               
               return (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem 
+                  key={item.title}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
                   <SidebarMenuButton 
                     isActive={isActive}
                     onClick={(e) => {
@@ -77,26 +81,33 @@ export function NavMain({
                       e.stopPropagation()
                       toggleExpanded(item.title)
                     }}
+                    className="group relative overflow-hidden"
                   >
-                    {item.icon && <item.icon className="tabler-icon" />}
+                    <div className="absolute inset-0 opacity-0" />
+                    {item.icon && <item.icon className="tabler-icon !h-4 !w-4" />}
                     <span>{item.title}</span>
                     <IconChevronRight 
-                      className={`ml-auto h-4 w-4 transition-transform duration-200 ${
-                        isExpanded ? 'rotate-90' : ''
-                      }`} 
+                      className={`ml-auto h-4 w-4 ${isExpanded ? 'rotate-90 text-primary' : ''}`} 
                     />
                   </SidebarMenuButton>
                   {isExpanded && (
-                    <SidebarMenuSub>
-                      {item.items!.map((subItem) => {
+                    <SidebarMenuSub className="animate-slide-in-right origin-left">
+                      {item.items!.map((subItem, subIndex) => {
                         const isSubActive = pathname === subItem.url || (subItem.url !== '/' && pathname.startsWith(subItem.url))
                         
                         return (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild isActive={isSubActive}>
-                              <Link 
-                                href={subItem.url}
-                              >
+                          <SidebarMenuSubItem 
+                            key={subItem.title}
+                            className="animate-fade-in-up"
+                            style={{ animationDelay: `${subIndex * 30}ms` }}
+                          >
+                            <SidebarMenuSubButton 
+                              asChild 
+                              isActive={isSubActive}
+                              className="group relative overflow-hidden"
+                            >
+                              <Link href={subItem.url} className="flex items-center gap-2">
+                                <div className="absolute inset-0 opacity-0" />
                                 <span>{subItem.title}</span>
                               </Link>
                             </SidebarMenuSubButton>
@@ -110,12 +121,19 @@ export function NavMain({
             }
             
             return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild isActive={isActive}>
-                  <Link 
-                    href={item.url}
-                  >
-                    {item.icon && <item.icon className="tabler-icon" />}
+              <SidebarMenuItem 
+                key={item.title}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={isActive}
+                  className="group relative overflow-hidden"
+                >
+                  <Link href={item.url}>
+                    <div className="absolute inset-0 opacity-0" />
+                    {item.icon && <item.icon className="tabler-icon !h-4 !w-4" />}
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>

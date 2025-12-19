@@ -87,36 +87,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [modules, navMain]);
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <Link href="/users">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">AiPills CRM</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <div className="text-sm text-muted-foreground">Loading modules...</div>
+    <Sidebar collapsible="offcanvas" {...props} className="border-r border-sidebar-border/50 backdrop-blur-xl dark:bg-[#031138]/70 dark:backdrop-blur-xl">
+      <div data-slot="sidebar-unified" className="flex h-full w-full flex-col">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem className="animate-fade-in-up">
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:!p-1.5 hover-lift group relative overflow-hidden"
+              >
+                <Link href="/users">
+                  <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
+                  <IconInnerShadowTop className="!size-5 transition-transform group-hover:scale-110 duration-300" />
+                  <span className="text-base font-semibold bg-gradient-to-r from-sidebar-foreground to-sidebar-primary bg-clip-text">
+                    AiPills CRM
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center p-4 animate-pulse">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <div className="text-sm text-muted-foreground">Loading modules...</div>
+              </div>
+            </div>
+          ) : (
+            <div className="animate-fade-in-up">
+              <NavMain items={navMain} />
+            </div>
+          )}
+        </SidebarContent>
+        <SidebarFooter>
+          <div className="animate-fade-in-up">
+            <NavUser/>
           </div>
-        ) : (
-          <>
-            <NavMain items={navMain} />
-          </>
-        )}
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser/>
-      </SidebarFooter>
+        </SidebarFooter>
+      </div>
     </Sidebar>
   )
 }

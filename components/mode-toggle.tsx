@@ -25,13 +25,14 @@ export function ModeToggle() {
             <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-9 w-9"
+                className="h-9 w-9 hover-lift group relative overflow-hidden transition-smooth"
                 onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             >
+                <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
                 {theme === "light" ? (
-                    <IconSun className="h-5 w-5" />
+                    <IconSun className="h-5 w-5 transition-all duration-500 rotate-0 group-hover:rotate-180 group-hover:scale-110" />
                 ) : (
-                    <IconMoon className="h-5 w-5" />
+                    <IconMoon className="h-5 w-5 transition-all duration-500 rotate-0 group-hover:-rotate-12 group-hover:scale-110" />
                 )}
                 <span className="sr-only">Toggle theme</span>
             </Button>

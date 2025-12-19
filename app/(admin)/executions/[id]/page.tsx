@@ -151,13 +151,13 @@ export default function ExecutionDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pt-6 pb-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/executions">
-              <Button variant="ghost" size="icon">
-                <IconArrowLeft className="h-4 w-4" />
+              <Button variant="ghost" size="lg" className="group">
+                <IconArrowLeft className="!h-10 !w-10 transition-transform group-hover:-translate-x-1" />
               </Button>
             </Link>
             <div>

@@ -552,12 +552,12 @@ export default function UserDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2 px-6 pb-6">
+      <div className="@container/main flex flex-1 flex-col gap-2 px-6 pt-6 pb-6">
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-center gap-4">
             <Link href="/users">
-              <Button variant="outline" size="sm">
-                <IconArrowLeft className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" className="group">
+                <IconArrowLeft className="!h-8 !w-8 mr-2 transition-transform group-hover:-translate-x-1" />
                 Back to list
               </Button>
             </Link>

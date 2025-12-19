@@ -88,14 +88,21 @@ export default function InstanceDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
+      <div className="@container/main flex flex-1 flex-col gap-6 px-6 pt-6 pb-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{instance.name}</h1>
-            <p className="text-muted-foreground">
-              n8n Instance Configuration
-            </p>
+          <div className="flex items-center gap-4">
+            <Link href="/instances">
+              <Button variant="ghost" size="lg" className="group">
+                <IconArrowLeft className="!h-10 !w-10 transition-transform group-hover:-translate-x-1" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold">{instance.name}</h1>
+              <p className="text-muted-foreground">
+                n8n Instance Configuration
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild>
