@@ -26,7 +26,6 @@ import {
   IconChevronsLeft,
   IconChevronsRight,
   IconCircleCheckFilled,
-  IconGripVertical,
   IconArrowsUpDown,
   IconArrowUp,
   IconArrowDown,
@@ -266,32 +265,7 @@ export const schema = z.object({
   reviewer: z.string(),
 })
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <IconGripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Drag to reorder</span>
-    </Button>
-  )
-}
-
 const columns: ColumnDef<User>[] = [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  },
   {
     id: "select",
     header: ({ table }) => (
@@ -339,7 +313,7 @@ const columns: ColumnDef<User>[] = [
       )
     },
     cell: ({ row }) => (
-      <div className="w-32">
+      <div className="w-10">
         <Link href={`/users/${row.original.id}`} className="text-blue-500 hover:text-blue-600">
           {row.original.id}
         </Link>
@@ -379,14 +353,14 @@ const columns: ColumnDef<User>[] = [
           {username.length > maxLength ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="font-medium truncate cursor-help">{truncated}</span>
+                <span className="font-medium text-foreground truncate cursor-help">{truncated}</span>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{username}</p>
               </TooltipContent>
             </Tooltip>
           ) : (
-            <span className="font-medium">{username || 'N/A'}</span>
+            <span className="font-medium text-foreground">{username || 'N/A'}</span>
           )}
         </div>
       );
@@ -426,14 +400,14 @@ const columns: ColumnDef<User>[] = [
           {email.length > maxLength ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-sm text-muted-foreground truncate cursor-help">{truncated}</span>
+                <span className="text-sm text-foreground truncate cursor-help">{truncated}</span>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{email}</p>
               </TooltipContent>
             </Tooltip>
           ) : (
-            <span className="text-sm text-muted-foreground">{email || 'N/A'}</span>
+            <span className="text-sm text-foreground">{email || 'N/A'}</span>
           )}
         </div>
       );
@@ -461,7 +435,7 @@ const columns: ColumnDef<User>[] = [
     },
     cell: ({ row }) => (
       <div className="w-32">
-        {row.original.firstName}
+        <span className="text-foreground">{row.original.firstName}</span>
       </div>
     ),
   },
@@ -485,11 +459,30 @@ const columns: ColumnDef<User>[] = [
         </Button>
       )
     },
-    cell: ({ row }) => (
-      <div className="w-32">
-        {row.original.lastName}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const lastName = row.original.lastName || '';
+      const maxLength = 20; // Maximum characters before truncation
+      const truncated = lastName.length > maxLength 
+        ? lastName.substring(0, maxLength) + '...' 
+        : lastName;
+
+      return (
+        <div className="w-40 min-w-[160px]">
+          {lastName.length > maxLength ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-foreground truncate block cursor-help">{truncated}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{lastName}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="text-foreground truncate block">{lastName}</span>
+          )}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "phone",
@@ -514,7 +507,7 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => (
       <div className="w-32 flex items-center gap-2">
         <IconPhone className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm">{row.original.phone || 'Not specified'}</span>
+        <span className="text-sm text-foreground">{row.original.phone || 'Not specified'}</span>
       </div>
     ),
   },
@@ -542,7 +535,7 @@ const columns: ColumnDef<User>[] = [
       <div className="w-32">
         <Badge 
           variant={row.original.role === "admin" ? "default" : "outline"} 
-          className="text-muted-foreground px-1.5"
+          className={row.original.role === "admin" ? "px-1.5 text-white" : "px-1.5 text-foreground"}
         >
           {row.original.role === "admin" ? "Administrator" : "User"}
         </Badge>
@@ -570,7 +563,7 @@ const columns: ColumnDef<User>[] = [
       )
     },
     cell: ({ row }) => (
-      <Badge variant="outline" className="text-muted-foreground px-1.5">
+      <Badge variant="outline" className="text-foreground px-1.5">
         {row.original.isEmailVerified ? (
           <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
         ) : (
@@ -605,7 +598,7 @@ const columns: ColumnDef<User>[] = [
       return (
         <Badge 
           variant={isActive ? "default" : "outline"} 
-          className={isActive ? "bg-green-500 hover:bg-green-600 text-white" : "text-muted-foreground px-1.5"}
+          className={isActive ? "bg-green-500 hover:bg-green-600 text-white" : "text-foreground px-1.5"}
         >
           {isActive ? (
             <>
@@ -644,7 +637,7 @@ const columns: ColumnDef<User>[] = [
     },
     cell: ({ row }) => (
       <div className="w-32">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-foreground">
           {new Date(row.original.createdAt).toLocaleDateString('uk-UA')}
         </span>
       </div>

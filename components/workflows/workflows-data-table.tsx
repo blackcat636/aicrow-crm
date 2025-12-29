@@ -118,7 +118,7 @@ const columns: ColumnDef<Workflow>[] = [
       )
     },
     cell: ({ row }) => (
-      <div className="w-32">
+      <div className="w-20">
         <Link href={`/workflows/${row.original.id}`} className="font-medium text-primary hover:underline">
           {String(row.original.id)}
         </Link>
@@ -147,7 +147,7 @@ const columns: ColumnDef<Workflow>[] = [
     },
     cell: ({ row }) => (
       <div className="w-32">
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium text-foreground">
           {row.original.n8nId || 'N/A'}
         </span>
       </div>
@@ -176,7 +176,7 @@ const columns: ColumnDef<Workflow>[] = [
     cell: ({ row }) => (
       <div className="w-48 flex items-center gap-2">
         <IconSettings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="font-medium truncate">{row.original.displayName || row.original.name || 'Unknown'}</span>
+        <span className="font-medium text-foreground truncate">{row.original.displayName || row.original.name || 'Unknown'}</span>
       </div>
     ),
     enableHiding: false,
@@ -205,7 +205,7 @@ const columns: ColumnDef<Workflow>[] = [
       <div className="w-32">
         <Badge 
           variant={row.original.active ? "default" : "outline"} 
-          className="text-muted-foreground px-1.5"
+          className={row.original.active ? "px-1.5 text-white" : "px-1.5 text-foreground"}
         >
           {row.original.active ? (
             <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400 mr-1 h-3 w-3" />
@@ -241,7 +241,7 @@ const columns: ColumnDef<Workflow>[] = [
       <div className="w-32">
         <Badge 
           variant={row.original.availableToUsers ? "default" : "outline"} 
-          className="text-muted-foreground px-1.5"
+          className={row.original.availableToUsers ? "px-1.5 text-white" : "px-1.5 text-foreground"}
         >
           {row.original.availableToUsers ? (
             <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400 mr-1 h-3 w-3" />
@@ -282,7 +282,7 @@ const columns: ColumnDef<Workflow>[] = [
         <div className="w-32">
           <Badge 
             variant={isTrue ? "default" : "outline"} 
-            className="text-muted-foreground px-1.5"
+            className={isTrue ? "px-1.5 text-white" : "px-1.5 text-foreground"}
           >
             {isTrue ? (
               <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400 mr-1 h-3 w-3" />
@@ -319,7 +319,7 @@ const columns: ColumnDef<Workflow>[] = [
     cell: ({ row }) => (
       <div className="w-48 flex items-center gap-2">
         <IconServer className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-foreground">
           {row.original.instance?.name || 'Unknown'}
         </span>
       </div>
@@ -348,7 +348,7 @@ const columns: ColumnDef<Workflow>[] = [
     cell: ({ row }) => (
       <div className="w-24 flex items-center gap-2">
         <IconActivity className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm">{String(row.original.nodes)}</span>
+        <span className="text-sm text-foreground">{String(row.original.nodes)}</span>
       </div>
     ),
   },
@@ -374,7 +374,7 @@ const columns: ColumnDef<Workflow>[] = [
     },
     cell: ({ row }) => (
       <div className="w-24">
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium text-foreground">
           {row.original.priceUsd ? `$${row.original.priceUsd}` : 'Free'}
         </span>
       </div>
@@ -402,7 +402,7 @@ const columns: ColumnDef<Workflow>[] = [
     },
     cell: ({ row }) => (
       <div className="w-24">
-        <span className="text-sm">{String(row.original.connections)}</span>
+        <span className="text-sm text-foreground">{String(row.original.connections)}</span>
       </div>
     ),
   },
@@ -429,7 +429,7 @@ const columns: ColumnDef<Workflow>[] = [
     cell: ({ row }) => (
       <div className="w-32 flex items-center gap-2">
         <IconCalendar className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-foreground">
           {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString('uk-UA') : 'Unknown'}
         </span>
       </div>

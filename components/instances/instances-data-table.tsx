@@ -121,12 +121,14 @@ export function InstancesDataTable({
         )
       },
       cell: ({ row }) => (
-        <Link 
-          href={`/instances/${row.original.id}`}
-          className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-        >
-          {String(row.original.id)}
-        </Link>
+        <div className="w-20">
+          <Link 
+            href={`/instances/${row.original.id}`}
+            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+          >
+            {String(row.original.id)}
+          </Link>
+        </div>
       ),
     },
     {
@@ -152,7 +154,7 @@ export function InstancesDataTable({
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IconServer className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{row.original.name}</span>
+          <span className="font-medium text-foreground">{row.original.name}</span>
           {row.original.isDefault && (
             <Badge variant="outline" className="text-xs">Default</Badge>
           )}
@@ -180,7 +182,7 @@ export function InstancesDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="font-mono text-sm">
+        <div className="font-mono text-sm text-foreground">
           {row.original.apiUrl}
         </div>
       ),
@@ -241,7 +243,7 @@ export function InstancesDataTable({
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IconSettings className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{row.original.totalWorkflows}</span>
+          <span className="text-sm text-foreground">{row.original.totalWorkflows}</span>
         </div>
       ),
     },
@@ -268,7 +270,7 @@ export function InstancesDataTable({
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IconActivity className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{row.original.totalExecutions}</span>
+          <span className="text-sm text-foreground">{row.original.totalExecutions}</span>
         </div>
       ),
     },
@@ -295,7 +297,7 @@ export function InstancesDataTable({
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IconCalendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-foreground">
             {new Date(row.original.lastSyncAt).toLocaleString('uk-UA')}
           </span>
         </div>

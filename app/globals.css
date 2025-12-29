@@ -538,6 +538,16 @@ body::before {
   transition: background-color 0.2s ease !important;
 }
 
+/* Active sub-menu items: same styling as hover */
+.dark [data-slot='sidebar-menu-sub-button'][data-active='true'] {
+  background: rgba(21, 36, 95, 0.6) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  border-left: 2px solid rgba(99, 102, 241, 0.7) !important;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: background-color 0.2s ease !important;
+}
+
 [data-slot='sidebar-menu-button'] *,
 [data-slot='sidebar-menu-sub-button'] * {
   transition: none !important;

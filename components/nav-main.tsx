@@ -81,7 +81,7 @@ export function NavMain({
                       e.stopPropagation()
                       toggleExpanded(item.title)
                     }}
-                    className="group relative overflow-hidden"
+                    className="group relative overflow-hidden cursor-pointer"
                   >
                     <div className="absolute inset-0 opacity-0" />
                     {item.icon && <item.icon className="tabler-icon !h-4 !w-4" />}
@@ -104,10 +104,8 @@ export function NavMain({
                             <SidebarMenuSubButton 
                               asChild 
                               isActive={isSubActive}
-                              className="group relative overflow-hidden"
                             >
                               <Link href={subItem.url} className="flex items-center gap-2">
-                                <div className="absolute inset-0 opacity-0" />
                                 <span>{subItem.title}</span>
                               </Link>
                             </SidebarMenuSubButton>
@@ -129,7 +127,7 @@ export function NavMain({
                 <SidebarMenuButton 
                   asChild 
                   isActive={isActive}
-                  className="group relative overflow-hidden"
+                  className="group relative overflow-hidden cursor-pointer"
                 >
                   <Link href={item.url}>
                     <div className="absolute inset-0 opacity-0" />

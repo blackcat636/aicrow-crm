@@ -686,8 +686,11 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        "text-sidebar-foreground ring-sidebar-ring flex h-7 min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-        "bg-transparent hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent data-[active=true]:text-sidebar-foreground",
+        "ring-sidebar-ring flex h-7 min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+        "text-sidebar-foreground bg-transparent transition-colors cursor-pointer",
+        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "active:bg-sidebar-accent active:text-sidebar-accent-foreground",
+        "data-[active=true]:!bg-sidebar-accent data-[active=true]:!font-medium data-[active=true]:!text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",

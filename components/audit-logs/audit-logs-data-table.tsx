@@ -165,7 +165,7 @@ export function AuditLogsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="w-20 font-medium">
+        <div className="w-10 font-medium text-foreground">
           {row.original.id}
         </div>
       ),
@@ -209,12 +209,12 @@ export function AuditLogsDataTable({
                 {userId ? (
                   <Link
                     href={`/users/${userId}`}
-                    className="text-sm text-primary hover:underline truncate"
+                    className="text-sm text-foreground hover:underline truncate"
                   >
                     {displayName}
                   </Link>
                 ) : (
-                  <span className="text-sm text-muted-foreground truncate">
+                  <span className="text-sm text-foreground truncate">
                     {displayName}
                   </span>
                 )}
@@ -251,7 +251,7 @@ export function AuditLogsDataTable({
       },
       cell: ({ row }) => (
         <div className="w-32">
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs text-foreground">
             {row.original.actionType}
           </Badge>
         </div>
@@ -279,7 +279,7 @@ export function AuditLogsDataTable({
       },
       cell: ({ row }) => (
         <div className="w-32">
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs text-foreground">
             {row.original.actionCategory}
           </Badge>
         </div>
@@ -306,7 +306,7 @@ export function AuditLogsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="w-32 text-sm">
+        <div className="w-32 text-sm text-foreground">
           {row.original.entityType}
         </div>
       ),
@@ -332,7 +332,7 @@ export function AuditLogsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="w-24 text-sm font-mono">
+        <div className="w-24 text-sm font-mono text-foreground">
           {row.original.entityId}
         </div>
       ),
@@ -352,7 +352,7 @@ export function AuditLogsDataTable({
             {description.length > maxLength ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-sm text-muted-foreground truncate cursor-help">
+                  <span className="text-sm text-foreground truncate cursor-help">
                     {truncated}
                   </span>
                 </TooltipTrigger>
@@ -361,7 +361,7 @@ export function AuditLogsDataTable({
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <span className="text-sm text-muted-foreground">{description}</span>
+              <span className="text-sm text-foreground">{description}</span>
             )}
           </div>
         )
@@ -371,7 +371,7 @@ export function AuditLogsDataTable({
       accessorKey: "ipAddress",
       header: "IP Address",
       cell: ({ row }) => (
-        <div className="w-48 min-w-[150px] text-sm font-mono">
+        <div className="w-48 min-w-[150px] text-sm font-mono text-foreground">
           {row.original.ipAddress}
         </div>
       ),
@@ -416,7 +416,7 @@ export function AuditLogsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="w-40 text-sm">
+        <div className="w-40 text-sm text-foreground">
           {new Date(row.original.createdAt).toLocaleDateString('en-US')}
         </div>
       ),

@@ -242,12 +242,14 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => (
-        <Link 
-          href={`/executions/${row.original.id}`}
-          className="font-medium text-primary hover:underline"
-        >
-          {String(row.original.id)}
-        </Link>
+        <div className="w-20">
+          <Link 
+            href={`/executions/${row.original.id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {String(row.original.id)}
+          </Link>
+        </div>
       ),
     },
     {
@@ -281,12 +283,14 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => (
-        <Link 
-          href={`/executions/${row.original.id}`}
-          className="font-mono text-sm text-primary hover:underline"
-        >
-          {row.original.n8nId}
-        </Link>
+        <div className="w-32">
+          <Link 
+            href={`/executions/${row.original.id}`}
+            className="font-mono text-sm text-primary hover:underline"
+          >
+            {row.original.n8nId}
+          </Link>
+        </div>
       ),
     },
     {
@@ -419,7 +423,7 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="text-sm">{row.original.instance?.name || 'Unknown'}</div>
+        <div className="text-sm text-foreground">{row.original.instance?.name || 'Unknown'}</div>
       ),
     },
     {
@@ -498,7 +502,7 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="text-sm font-mono">
+        <div className="text-sm font-mono text-foreground">
           {formatDuration(row.original.duration)}
         </div>
       ),
@@ -524,7 +528,7 @@ export function ExecutionsDataTable({
         )
       },
       cell: ({ row }) => (
-        <div className="text-sm">
+        <div className="text-sm text-foreground">
           {new Date(row.original.startedAt).toLocaleString('uk-UA')}
         </div>
       ),

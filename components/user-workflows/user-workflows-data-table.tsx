@@ -166,7 +166,7 @@ const createColumns = (
     cell: ({ row }) => {
       const workflowId = row.original.workflowId || row.original.workflow?.id;
       if (!workflowId) {
-        return <div className="w-24 text-muted-foreground">-</div>;
+        return <div className="w-24 text-foreground">-</div>;
       }
       return (
         <div className="w-24">
@@ -201,7 +201,7 @@ const createColumns = (
       <div className="w-48 flex items-center gap-2 min-w-0 overflow-hidden">
         <IconSettings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <Link href={`/users/${userId}/workflows/${row.original.id}`} className="min-w-0 flex-1">
-          <span className="font-medium hover:underline cursor-pointer truncate block">
+          <span className="font-medium text-foreground hover:underline cursor-pointer truncate block">
             {row.original.name || 'Unknown'}
           </span>
         </Link>
@@ -233,7 +233,7 @@ const createColumns = (
       <div className="w-32">
         <Badge 
           variant={row.original.isActive ? "default" : "outline"} 
-          className="text-muted-foreground px-1.5 cursor-pointer"
+          className={row.original.isActive ? "px-1.5 cursor-pointer text-white" : "px-1.5 cursor-pointer text-foreground"}
           onClick={() => onToggle(row.original.id)}
         >
           {row.original.isActive ? (
@@ -270,7 +270,7 @@ const createColumns = (
     cell: ({ row }) => (
       <div className="w-48 flex items-center gap-2 min-w-0 overflow-hidden">
         <IconSettings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-sm text-muted-foreground truncate min-w-0">
+        <span className="text-sm text-foreground truncate min-w-0">
           {row.original.workflow?.name || 'Unknown'}
         </span>
       </div>
@@ -282,11 +282,11 @@ const createColumns = (
     cell: ({ row }) => (
       <div className="w-24">
         {row.original.scheduleType ? (
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs text-foreground">
             {row.original.scheduleType}
           </Badge>
         ) : (
-          <span className="text-sm text-muted-foreground">Manual</span>
+          <span className="text-sm text-foreground">Manual</span>
         )}
       </div>
     ),
@@ -314,7 +314,7 @@ const createColumns = (
     cell: ({ row }) => (
       <div className="w-32 flex items-center gap-2">
         <IconCalendar className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-foreground">
           {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString('uk-UA') : 'Unknown'}
         </span>
       </div>

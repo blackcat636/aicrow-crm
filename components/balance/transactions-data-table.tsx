@@ -113,7 +113,7 @@ const columns: ColumnDef<Transaction>[] = [
       )
     },
     cell: ({ row }) => (
-      <div className="w-20 font-medium">{row.original.id}</div>
+      <div className="w-20 font-medium text-foreground">{row.original.id}</div>
     ),
   },
   {
@@ -182,7 +182,7 @@ const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <IconCoins className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{row.original.currency}</span>
+        <span className="font-medium text-foreground">{row.original.currency}</span>
       </div>
     ),
   },
@@ -244,7 +244,7 @@ const columns: ColumnDef<Transaction>[] = [
     accessorKey: "description",
     header: "Description",
     cell: ({ row }) => (
-      <div className="max-w-[200px] truncate" title={row.original.description}>
+      <div className="max-w-[200px] truncate text-foreground" title={row.original.description}>
         {row.original.description}
       </div>
     ),
@@ -255,7 +255,7 @@ const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => {
       const referenceId = row.original.referenceId || row.original.reference_id
       return (
-        <div className="max-w-[150px] truncate text-muted-foreground" title={referenceId}>
+        <div className="max-w-[150px] truncate text-foreground" title={referenceId}>
           {referenceId || '-'}
         </div>
       )
@@ -287,7 +287,7 @@ const columns: ColumnDef<Transaction>[] = [
       if (!createdAt) return <span className="text-muted-foreground">-</span>
       const date = new Date(createdAt)
       return (
-        <div className="text-sm">
+        <div className="text-sm text-foreground">
           {date.toLocaleString('en-US', {
             year: 'numeric',
             month: 'short',

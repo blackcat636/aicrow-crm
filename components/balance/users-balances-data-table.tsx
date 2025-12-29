@@ -99,7 +99,7 @@ const columns: ColumnDef<UserWithBalancesDto>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <IconUser className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{row.original.user.username}</span>
+        <span className="font-medium text-foreground">{row.original.user.username}</span>
       </div>
     ),
   },
@@ -126,7 +126,7 @@ const columns: ColumnDef<UserWithBalancesDto>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <IconMail className="h-4 w-4 text-muted-foreground" />
-        <span>{row.original.user.email}</span>
+        <span className="text-foreground">{row.original.user.email}</span>
       </div>
     ),
   },
@@ -169,7 +169,7 @@ const columns: ColumnDef<UserWithBalancesDto>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <IconCoins className="h-4 w-4 text-muted-foreground" />
-        <span>{row.original.total_balances}</span>
+        <span className="text-foreground">{row.original.total_balances}</span>
       </div>
     ),
   },
@@ -179,7 +179,7 @@ const columns: ColumnDef<UserWithBalancesDto>[] = [
     cell: ({ row }) => {
       const total = row.original.balances.reduce((sum, b) => sum + b.balance, 0)
       return (
-        <div className="font-medium">
+        <div className="font-medium text-foreground">
           {total.toFixed(2)}
         </div>
       )
