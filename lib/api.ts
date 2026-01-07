@@ -1,5 +1,5 @@
-import { removeTokens, setTokens, getCookieValue } from './auth';
-import { ensureValidToken } from './auth-utils';
+import { removeTokens, getCookieValue } from './auth';
+import { ensureValidToken, refreshAccessToken } from './auth-utils';
 import { login as authLogin, logout as authLogout } from './apiAuth';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -11,50 +11,6 @@ interface ApiResponse<T> {
   message?: string;
   error?: string;
 }
-
-// const isTokenExpired = (token: string): boolean => {
-//     const payload = decodeToken(token);
-//     if (!payload) return true;
-//     const now = Math.floor(Date.now() / 1000);
-//     return payload.exp < now;
-// };
-
-export const refreshAccessToken = async (): Promise<boolean> => {
-  const refreshToken = getRefreshToken();
-  const deviceId = getDeviceId();
-
-  if (!refreshToken || !deviceId) {
-    return false;
-  }
-
-  try {
-    const response = await globalThis.fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': deviceId
-      },
-      body: JSON.stringify({ refreshToken })
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.data) {
-      // Use existing deviceId, since server may not return new one
-      setTokens({
-        accessToken: data.data.accessToken,
-        refreshToken: data.data.refreshToken,
-        deviceId: deviceId // Use existing deviceId
-      });
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('❌ Refresh failed:', error);
-    return false; // Do not throw error, return false
-  }
-};
 
 export const getAccessToken = () => {
   if (typeof window !== 'undefined') {
@@ -122,13 +78,16 @@ export async function fetchWithAuth(
     });
 
     if (response.status === 401) {
-      const refreshToken = getCookieValue('refresh_token'); // Read from cookies
-      const deviceId = getCookieValue('device_id'); // Read from cookies
+      // Try to refresh token (will use lock to prevent duplicate requests)
+      const refreshToken = getCookieValue('refresh_token');
+      const deviceId = getCookieValue('device_id');
 
       if (refreshToken && deviceId) {
+        // Use refreshAccessToken from auth-utils (has lock to prevent duplicates)
         const isRefreshed = await refreshAccessToken();
 
         if (isRefreshed) {
+          // Retry the original request
           return fetchWithAuth(url, options);
         } else {
           removeTokens();

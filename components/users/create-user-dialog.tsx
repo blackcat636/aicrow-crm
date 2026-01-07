@@ -236,7 +236,7 @@ export function CreateUserDialog() {
               <SelectTrigger>
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="admin">Administrator</SelectItem>
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>

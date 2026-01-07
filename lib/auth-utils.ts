@@ -8,9 +8,13 @@
  * - Роботи з cookies
  */
 
-import { getCookieValue, setTokens } from './auth';
+import { getCookieValue, setTokens, removeTokens } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
+
+// Lock to prevent concurrent refresh requests
+let refreshInProgress = false;
+let refreshPromise: Promise<boolean> | null = null;
 
 /**
  * 🔍 Декодує JWT токен та повертає payload
@@ -42,8 +46,14 @@ export const decodeToken = (token: string) => {
 
 /**
  * 🔄 Оновлює access token через refresh token
+ * Захищено від одночасних викликів - якщо refresh вже виконується, повертає той самий Promise
  */
 export const refreshAccessToken = async (): Promise<boolean> => {
+  // If refresh is already in progress, return the existing promise
+  if (refreshInProgress && refreshPromise) {
+    return refreshPromise;
+  }
+
   const refreshToken = getCookieValue('refresh_token');
   const deviceId = getCookieValue('device_id');
 
@@ -51,15 +61,44 @@ export const refreshAccessToken = async (): Promise<boolean> => {
     return false;
   }
 
-  try {
-    const response = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': deviceId
-      },
-      body: JSON.stringify({ refreshToken, deviceId })
-    });
+  // Set lock and create promise
+  refreshInProgress = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-id': deviceId
+        },
+        body: JSON.stringify({ refreshToken, deviceId })
+      });
+
+    // Handle non-OK responses
+    if (!response.ok) {
+      // If 401, refresh token is invalid - clear tokens and return false
+      if (response.status === 401) {
+        // Clear invalid tokens
+        removeTokens();
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('🔐 Refresh token is invalid or expired. User needs to login again.');
+        }
+        return false;
+      }
+      
+      // For other errors, try to parse error message
+      try {
+        const errorData = await response.json();
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Token refresh error:', errorData.message || `Status ${response.status}`);
+        }
+      } catch {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Token refresh error: Status', response.status);
+        }
+      }
+      return false;
+    }
 
     const data = await response.json();
 
@@ -74,10 +113,22 @@ export const refreshAccessToken = async (): Promise<boolean> => {
     } else {
       return false;
     }
-  } catch (error) {
-    console.error('❌ Token refresh error:', error);
-    return false;
-  }
+    } catch (error) {
+      // Network errors or other fetch errors
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Token refresh error:', error instanceof Error ? error.message : String(error));
+      }
+      return false;
+    } finally {
+      // Release lock after 1 second to allow new refresh if needed
+      setTimeout(() => {
+        refreshInProgress = false;
+        refreshPromise = null;
+      }, 1000);
+    }
+  })();
+
+  return refreshPromise;
 };
 
 /**
@@ -154,108 +205,5 @@ export const retryRequest = async <T>(
   throw lastError || new Error('Max retries exceeded');
 };
 
-/**
- * 🍪 Утиліти для роботи з cookies
- */
-export const cookieUtils = {
-  /**
-   * Встановлює cookie з вказаними параметрами
-   */
-  setCookieValue: (name: string, value: string, maxAge: number = -1) => {
-    if (typeof window === 'undefined') return;
-
-    let cookieString = `${name}=${value}; path=/`;
-
-    if (maxAge > 0) {
-      cookieString += `; max-age=${maxAge}`;
-    }
-
-    // Додаємо secure прапор в production
-    if (process.env.NODE_ENV === 'production') {
-      cookieString += '; secure';
-    }
-
-    cookieString += '; samesite=strict';
-
-    document.cookie = cookieString;
-  },
-
-  /**
-   * Отримує значення cookie за іменем
-   */
-  getCookieValue: (name: string): string | null => {
-    if (typeof window === 'undefined') return null;
-
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-
-    if (parts.length === 2) {
-      return parts.pop()?.split(';').shift() || null;
-    }
-
-    return null;
-  },
-
-  /**
-   * Видаляє cookie
-   */
-  deleteCookie: (name: string) => {
-    if (typeof window === 'undefined') return;
-
-    document.cookie = `${name}=; path=/; max-age=0`;
-  }
-};
-
-/**
- * 🔐 Утиліти для безпеки
- */
-export const securityUtils = {
-  /**
-   * Перевіряє чи токен не прострочений
-   */
-  isTokenExpired: (token: string): boolean => {
-    const decoded = decodeToken(token);
-    if (!decoded || !decoded.exp) return true;
-
-    const now = Math.floor(Date.now() / 1000);
-    return decoded.exp <= now;
-  },
-
-  /**
-   * Отримує час до закінчення токена в секундах
-   */
-  getTokenTimeLeft: (token: string): number => {
-    const decoded = decodeToken(token);
-    if (!decoded || !decoded.exp) return 0;
-
-    const now = Math.floor(Date.now() / 1000);
-    return Math.max(0, decoded.exp - now);
-  },
-
-  /**
-   * Перевіряє чи потрібно оновити токен (менше 5 хвилин)
-   */
-  shouldRefreshToken: (token: string): boolean => {
-    const timeLeft = securityUtils.getTokenTimeLeft(token);
-    return timeLeft > 0 && timeLeft <= 300; // 5 хвилин
-  }
-};
-
-/**
- * 📊 Утиліти для моніторингу
- */
-export const monitoringUtils = {
-  /**
-   * Логує інформацію про токен
-   */
-  logTokenInfo: (token: string) => {
-    const decoded = decodeToken(token);
-    if (!decoded) {
-      return;
-    }
-  }
-
-  /**
-   * Перевіряє стан всіх токенів
-   */
-};
+// Removed unused utilities: cookieUtils, securityUtils, monitoringUtils
+// These were not being used anywhere in the codebase

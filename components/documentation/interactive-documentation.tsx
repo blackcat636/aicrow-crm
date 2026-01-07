@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { refreshTokenClient } from '@/lib/auth';
+import { refreshAccessToken } from '@/lib/auth-utils';
 import { useRouter } from 'next/navigation';
 import { 
   IconBook, 
@@ -112,7 +112,7 @@ export default function InteractiveDocumentation() {
             console.warn('⚠️ Token expired or invalid, attempting to refresh...');
             
             // Try to refresh the token
-            const refreshSuccess = await refreshTokenClient();
+            const refreshSuccess = await refreshAccessToken();
             
             if (refreshSuccess) {
               const retryResponse = await fetch('/api/docs-tree', {
@@ -360,7 +360,7 @@ export default function InteractiveDocumentation() {
           console.warn('⚠️ Document request: Token expired, attempting to refresh...');
           
           // Try to refresh the token
-          const refreshSuccess = await refreshTokenClient();
+          const refreshSuccess = await refreshAccessToken();
           
           if (refreshSuccess) {
             // Retry the request with the new token

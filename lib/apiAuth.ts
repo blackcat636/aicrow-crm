@@ -10,7 +10,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { setTokens, removeTokens, getCookieValue } from './auth';
-import { cookieUtils } from './auth-utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
 
@@ -22,8 +21,11 @@ export const generateDeviceId = (): string => {
 
   if (!deviceId) {
     deviceId = uuidv4();
-    // Зберігаємо Device ID на 1 рік
-    cookieUtils.setCookieValue('device_id', deviceId, 31536000);
+    // Device ID will be saved when tokens are set during login via setTokens()
+    // For now, we'll set it manually if needed before login
+    if (typeof window !== 'undefined') {
+      document.cookie = `device_id=${deviceId}; path=/; max-age=31536000; samesite=strict${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
+    }
   }
 
   return deviceId;
@@ -77,6 +79,10 @@ export const login = async (email: string, password: string) => {
 
 /**
  * 🔄 Оновлення токенів
+ * 
+ * ⚠️ Legacy function - returns object instead of boolean
+ * For new code, use refreshAccessToken() from auth-utils.ts which has lock mechanism
+ * to prevent concurrent refresh requests.
  */
 export const refreshToken = async () => {
   const refreshToken = getCookieValue('refresh_token');
@@ -233,78 +239,5 @@ export const validateTokens = async () => {
   }
 };
 
-/**
- * 🔧 Утиліти для роботи з API
- */
-export const apiUtils = {
-  /**
-   * Отримує заголовки для авторизованих запитів
-   */
-  getAuthHeaders: (): HeadersInit => {
-    const accessToken = getCookieValue('access_token');
-    const deviceId = getCookieValue('device_id');
-
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    if (deviceId) {
-      headers['x-device-id'] = deviceId;
-    }
-
-    return headers;
-  },
-
-  /**
-   * Перевіряє чи потрібно оновити токен перед запитом
-   */
-  ensureValidToken: async (): Promise<boolean> => {
-    const validation = await validateTokens();
-
-    if (!validation.valid) {
-      try {
-        await refreshToken();
-        return true;
-      } catch (error) {
-        console.error('❌ Token refresh failed:', error);
-        return false;
-      }
-    }
-
-    return true;
-  }
-};
-
-/**
- * 📊 Статистика аутентифікації
- */
-export const authStats = {
-  /**
-   * Отримує статистику токенів
-   */
-  getTokenStats: () => {
-    const accessToken = getCookieValue('access_token');
-    const refreshToken = getCookieValue('refresh_token');
-    const deviceId = getCookieValue('device_id');
-
-    return {
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
-      hasDeviceId: !!deviceId,
-      deviceId: deviceId,
-      accessTokenLength: accessToken?.length || 0,
-      refreshTokenLength: refreshToken?.length || 0
-    };
-  },
-
-  /**
-   * Логує детальну інформацію про аутентифікацію
-   */
-  logAuthInfo: () => {
-    authStats.getTokenStats();
-  }
-};
+// Removed unused utilities: apiUtils.ensureValidToken (use ensureValidToken from auth-utils.ts instead)
+// Removed unused utilities: authStats (not being used anywhere)

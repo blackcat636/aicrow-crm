@@ -187,7 +187,6 @@ export default function WorkflowDetailPage() {
         setIsLoadingSocialNetworks(true);
         try {
           const response = await getSocialNetworks();
-          console.log('Social networks response:', response);
           if (response.status === 200 || response.status === 0) {
             // Handle response data - it should be SocialNetwork[] according to the API
             const networks: SocialNetwork[] = Array.isArray(response.data) 
@@ -195,7 +194,6 @@ export default function WorkflowDetailPage() {
               : [];
             
             setSocialNetworks(networks);
-            console.log('Set social networks:', networks);
           } else {
             toast.error('Failed to load social networks');
           }

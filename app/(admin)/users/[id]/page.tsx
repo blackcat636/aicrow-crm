@@ -12,7 +12,15 @@ import {
   changeUserPassword,
   updateUser,
 } from '@/lib/api/users';
+import {
+  assignRoleToUser,
+  removeRoleFromUser,
+  getUserRoles,
+} from '@/lib/api/roles';
+import { useRolesStore } from '@/store/useRolesStore';
 import { UserDetail } from '@/interface/User';
+import { UserRole, Role } from '@/interface/Role';
+import { Permission } from '@/interface/Permission';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -144,6 +152,22 @@ export default function UserDetailPage() {
   });
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  
+  interface UserPermissionItem {
+    permission: Permission;
+    role: string;
+    resourceFilters?: Record<string, unknown> | null;
+    conditions?: unknown | null;
+    expiresAt?: string | null;
+  }
+  
+  const [userPermissions, setUserPermissions] = useState<UserPermissionItem[]>([]);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+  const [showAssignRoleDialog, setShowAssignRoleDialog] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  
+  const { roles, fetchRoles } = useRolesStore();
   
   const {
     auditLogs,
@@ -201,6 +225,174 @@ export default function UserDetailPage() {
       fetchUser();
     }
   }, [userId, fetchUser]);
+
+  // Fetch user roles and permissions
+  // Note: We get both roles and permissions from /api/admin/permissions/users/{userId}/roles
+  const fetchUserRoles = useCallback(async () => {
+    if (!userId) return;
+    setIsLoadingRoles(true);
+    try {
+      // Ensure roles are loaded from store first
+      if (roles.length === 0) {
+        await fetchRoles();
+      }
+      
+      // Get roles from /api/admin/permissions/users/{userId}/roles
+      // This endpoint returns permissions with role field, we extract unique roles from it
+      const rolesResponse = await getUserRoles(Number(userId));
+      const userRolesData = (rolesResponse.data || []) as UserPermissionItem[];
+      
+      // Extract unique roles from permissions data
+      // Each item has a 'role' field (role name as string)
+      const roleMap = new Map<string, { roleName: string; roleId?: number; permissions: UserPermissionItem[] }>();
+      
+      userRolesData.forEach((item: UserPermissionItem) => {
+        const roleName = item.role;
+        if (roleName) {
+          if (!roleMap.has(roleName)) {
+            // Find role from store by name to get roleId
+            // Wait for roles to be loaded if needed
+            const roleFromStore = roles.find((r) => r.name === roleName);
+            roleMap.set(roleName, {
+              roleName,
+              roleId: roleFromStore?.id,
+              permissions: [item]
+            });
+          } else {
+            const existing = roleMap.get(roleName);
+            if (existing) {
+              existing.permissions.push(item);
+            }
+          }
+        }
+      });
+      
+      // Convert to UserRole format for compatibility
+      // Try to get roleId from store, but if not found, we'll use role name for filtering
+      const uniqueUserRoles: UserRole[] = Array.from(roleMap.values()).map((roleData) => {
+        // Find roleId from store (should be loaded now)
+        const roleFromStore = roles.find((r) => r.name === roleData.roleName);
+        const roleId = roleFromStore?.id || 0;
+        
+        return {
+          roleId: roleId,
+          role: roleData.roleName,
+          resourceFilters: null,
+          expiresAt: null
+        };
+      });
+      
+      // Log for debugging
+      console.log('🔍 Extracted user roles from API:', {
+        totalPermissions: userRolesData.length,
+        uniqueRoleNames: Array.from(roleMap.keys()),
+        extractedRoles: uniqueUserRoles.map(r => ({ name: r.role, id: r.roleId })),
+        rolesInStore: roles.length,
+        rolesWithoutIdInStore: Array.from(roleMap.values())
+          .filter(r => !roles.find(rs => rs.name === r.roleName))
+          .map(r => r.roleName)
+      });
+      
+      setUserRoles(uniqueUserRoles);
+      
+      // Also set userRolesData for Effective Permissions (contains all permissions)
+      // We'll use this data for Effective Permissions display
+      setUserPermissions(userRolesData);
+    } catch (error) {
+      console.error('❌ Error fetching user roles:', error);
+    } finally {
+      setIsLoadingRoles(false);
+    }
+  }, [userId, roles, fetchRoles]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchUserRoles();
+    }
+  }, [userId, fetchUserRoles]);
+
+  // Remove separate fetchUserPermissions call since we get permissions from roles endpoint
+  // useEffect(() => {
+  //   if (userId) {
+  //     fetchUserPermissions();
+  //   }
+  // }, [userId, fetchUserPermissions]);
+
+  const handleAssignRole = async (roleId: number, resourceFilters?: Record<string, unknown> | null, expiresAt?: string) => {
+    if (!userId) return;
+    
+    // Double-check: verify role is not already assigned
+    const roleToAssign = roles.find(r => r.id === roleId);
+    if (roleToAssign) {
+      const isAlreadyAssigned = userRoles.some((userRole) => {
+        // Check by roleId
+        if (userRole.roleId === roleId) {
+          return true;
+        }
+        // Check by role name
+        if (typeof userRole.role === 'string' && userRole.role === roleToAssign.name) {
+          return true;
+        }
+        // Check by role object id
+        if (typeof userRole.role === 'object' && userRole.role?.id === roleId) {
+          return true;
+        }
+        return false;
+      });
+      
+      if (isAlreadyAssigned) {
+        toast.error(`Role "${roleToAssign.name}" is already assigned to this user`);
+        return;
+      }
+    }
+    
+    try {
+      setIsActionLoading(true);
+      await assignRoleToUser(Number(userId), {
+        roleId,
+        resourceFilters: resourceFilters || undefined,
+        expiresAt
+      });
+      toast.success('Role assigned successfully');
+      setShowAssignRoleDialog(false);
+      setSelectedRoleId(''); // Clear selected role ID after successful assignment
+      await fetchUserRoles(); // This now also updates userPermissions
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to assign role';
+      
+      // If backend says role is already assigned, refresh roles to show all assigned roles
+      // This handles the case where a role is assigned but has no permissions (not shown in API response)
+      if (message.includes('already has this role') || message.includes('already assigned')) {
+        toast.error(message);
+        // Refresh roles to get updated list
+        await fetchUserRoles();
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleRemoveRole = async (roleId: number) => {
+    if (!userId) return;
+    try {
+      setIsActionLoading(true);
+      await removeRoleFromUser(Number(userId), roleId);
+      toast.success('Role removed successfully');
+      await fetchUserRoles(); // This now also updates userPermissions
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove role';
+      toast.error(message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Load roles when component mounts
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   const buildLogsFilters = useCallback(
     (overrides?: Partial<AuditLogFilters>): AuditLogFilters => {
@@ -646,6 +838,10 @@ export default function UserDetailPage() {
         <Tabs defaultValue="overview" className="flex flex-1 flex-col gap-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="roles">
+              <IconShield className="h-4 w-4 mr-2" />
+              Roles
+            </TabsTrigger>
             <TabsTrigger value="audit-logs">
               <IconHistory className="h-4 w-4 mr-2" />
               Audit Logs
@@ -1127,7 +1323,372 @@ export default function UserDetailPage() {
               hideUserId={true}
             />
           </TabsContent>
+
+          <TabsContent value="roles" className="flex flex-col gap-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold">User Roles & Permissions</h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage roles assigned to this user
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowAssignRoleDialog(true)}
+                disabled={isActionLoading || isLoadingRoles}
+              >
+                <IconShield className="h-4 w-4 mr-2" />
+                Assign Role
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Roles</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingRoles ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading roles...
+                  </div>
+                ) : (() => {
+                    // Use userRoles directly (already extracted from /api/admin/permissions/users/{userId}/roles)
+                    // Get permissions for each role from userPermissions
+                    interface RoleMapItem {
+                      roleName: string;
+                      role?: Role;
+                      roleId?: number;
+                      userRole?: UserRole;
+                      permissions: UserPermissionItem[];
+                    }
+                    const roleMap = new Map<string, RoleMapItem>();
+                    
+                    // Process userRoles (already contains unique roles)
+                    userRoles.forEach((userRole: UserRole) => {
+                      const roleName = typeof userRole.role === 'string' ? userRole.role : (userRole.role?.name || '');
+                      const roleId = userRole.roleId;
+                      
+                      if (roleName && roleId) {
+                        // Find full role info from store
+                        const role = typeof userRole.role === 'object' ? userRole.role : roles.find(r => r.name === roleName);
+                        
+                        // Get permissions for this role from userPermissions
+                        const rolePermissions = userPermissions.filter((item: UserPermissionItem) => item.role === roleName);
+                        
+                        roleMap.set(roleName, {
+                          roleName,
+                          role: role,
+                          roleId: roleId,
+                          userRole: userRole,
+                          permissions: rolePermissions
+                        });
+                      }
+                    });
+
+                    const uniqueRoles = Array.from(roleMap.values());
+                    
+                    // Log final result: ролі та API запит
+                    console.log('👤 User Roles:', {
+                      count: uniqueRoles.length,
+                      roles: uniqueRoles.map(r => ({ name: r.roleName, id: r.roleId })),
+                      apiRequests: [
+                        `GET /api/admin/permissions/users/${userId}/roles`,
+                        `GET /api/admin/permissions/roles`
+                      ]
+                    });
+
+                    if (uniqueRoles.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No roles assigned to this user
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {uniqueRoles.map((item: RoleMapItem, index: number) => {
+                          const role = item.role;
+                          const roleId = item.roleId;
+                          const roleName = role?.name || item.roleName || 'Unknown Role';
+                          const roleDescription = role?.description || 'No description';
+                          const userRole = item.userRole;
+                          
+                          // Create unique key combining roleId, roleName, and index to ensure uniqueness
+                          const uniqueKey = roleId ? `role-${roleId}` : `role-${item.roleName || 'unknown'}-${index}`;
+                          
+                          return (
+                            <div
+                              key={uniqueKey}
+                              className="flex items-center justify-between p-4 border rounded-lg"
+                            >
+                              <div>
+                                <p className="font-medium">{roleName}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {roleDescription}
+                                </p>
+                                {userRole?.resourceFilters && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Filters: {JSON.stringify(userRole.resourceFilters)}
+                                  </p>
+                                )}
+                                {userRole?.expiresAt && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Expires: {new Date(userRole.expiresAt).toLocaleDateString()}
+                                  </p>
+                                )}
+                                {item.permissions && item.permissions.length > 0 && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {item.permissions.length} permission(s)
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  if (roleId) {
+                                    handleRemoveRole(roleId);
+                                  }
+                                }}
+                                disabled={isActionLoading}
+                              >
+                                <IconX className="h-4 w-4 mr-2" />
+                                Remove
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Effective Permissions</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  All permissions granted to this user through assigned roles
+                </p>
+              </CardHeader>
+              <CardContent>
+                {isLoadingRoles ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading permissions...
+                  </div>
+                ) : userPermissions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No effective permissions for this user
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Group permissions by resource */}
+                    {(() => {
+                      const permissionsByResource = new Map<string, UserPermissionItem[]>();
+                      
+                      userPermissions.forEach((item: UserPermissionItem) => {
+                        const resource = item.permission?.resource || 'Unknown';
+                        if (!permissionsByResource.has(resource)) {
+                          permissionsByResource.set(resource, []);
+                        }
+                        permissionsByResource.get(resource)!.push(item);
+                      });
+
+                      return Array.from(permissionsByResource.entries()).map(([resource, items]) => (
+                        <div key={resource} className="border rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <h4 className="font-semibold text-base capitalize">{resource}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {items.length} {items.length === 1 ? 'permission' : 'permissions'}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {items.map((item: UserPermissionItem, index: number) => {
+                              const perm = item.permission;
+                              // Create unique key combining resource, permission id, role, and index
+                              const uniqueKey = `${resource}-${perm?.id || 'unknown'}-${item.role || 'no-role'}-${index}`;
+                              return (
+                                <div
+                                  key={uniqueKey}
+                                  className="flex flex-col gap-2 p-3 bg-muted/50 rounded-md border"
+                                >
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <Badge variant="secondary" className="text-xs font-mono">
+                                      {perm?.action || 'N/A'}
+                                    </Badge>
+                                    {item.role && (
+                                      <Badge variant="outline" className="text-xs">
+                                        via {item.role}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm font-medium">{perm?.name || 'Unknown permission'}</p>
+                                  {perm?.description && (
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                      {perm.description}
+                                    </p>
+                                  )}
+                                  {item.resourceFilters && (
+                                    <p className="text-xs text-muted-foreground mt-1 italic">
+                                      Filters: {JSON.stringify(item.resourceFilters)}
+                                    </p>
+                                  )}
+                                  {item.expiresAt && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Expires: {new Date(item.expiresAt).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Assign Role Dialog */}
+        <Dialog 
+          open={showAssignRoleDialog} 
+          onOpenChange={(open) => {
+            setShowAssignRoleDialog(open)
+            if (!open) {
+              // Clear selected role ID when dialog closes to prevent stale state
+              setSelectedRoleId('')
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign Role to User</DialogTitle>
+              <DialogDescription>
+                Select a role to assign to {user?.username || 'this user'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="role-select">Role</Label>
+                <Select
+                  value={selectedRoleId}
+                  onValueChange={setSelectedRoleId}
+                >
+                  <SelectTrigger id="role-select">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[110]">
+                    {roles.length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        Loading roles...
+                      </div>
+                    ) : (() => {
+                        // Debug: log current state
+                        console.log('🔍 Filtering roles for assignment:', {
+                          allRoles: roles.map(r => ({ id: r.id, name: r.name })),
+                          userRoles: userRoles.map(r => ({ roleId: r.roleId, role: r.role })),
+                          availableRoles: roles.filter((role) => {
+                            const isAssigned = userRoles.some((userRole) => {
+                              // Check by roleId (most reliable)
+                              if (userRole.roleId === role.id) {
+                                return true;
+                              }
+                              // Check by role name if role is a string
+                              if (typeof userRole.role === 'string' && userRole.role === role.name) {
+                                return true;
+                              }
+                              // Check by role object id
+                              if (typeof userRole.role === 'object' && userRole.role?.id === role.id) {
+                                return true;
+                              }
+                              return false;
+                            });
+                            return !isAssigned;
+                          }).map(r => ({ id: r.id, name: r.name }))
+                        });
+                        
+                        return roles.filter((role) => {
+                          // Filter out roles that are already assigned to the user
+                          // userRoles now contains UserRole[] with roleId and role (string or object)
+                          return !userRoles.some((userRole) => {
+                            // Check by roleId (most reliable)
+                            if (userRole.roleId === role.id) {
+                              return true;
+                            }
+                            // Check by role name if role is a string
+                            if (typeof userRole.role === 'string' && userRole.role === role.name) {
+                              return true;
+                            }
+                            // Check by role object id
+                            if (typeof userRole.role === 'object' && userRole.role?.id === role.id) {
+                              return true;
+                            }
+                            return false;
+                          });
+                        });
+                      })().length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        All available roles are already assigned
+                      </div>
+                    ) : (
+                      roles
+                        .filter((role) => {
+                          // Filter out roles that are already assigned to the user
+                          return !userRoles.some((userRole) => {
+                            // Check by roleId (most reliable)
+                            if (userRole.roleId === role.id) {
+                              return true;
+                            }
+                            // Check by role name if role is a string
+                            if (typeof userRole.role === 'string' && userRole.role === role.name) {
+                              return true;
+                            }
+                            // Check by role object id
+                            if (typeof userRole.role === 'object' && userRole.role?.id === role.id) {
+                              return true;
+                            }
+                            return false;
+                          });
+                        })
+                        .map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name} - {role.description}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAssignRoleDialog(false);
+                  setSelectedRoleId('');
+                }}
+                disabled={isActionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!selectedRoleId) {
+                    toast.error('Please select a role');
+                    return;
+                  }
+                  handleAssignRole(Number(selectedRoleId));
+                }}
+                disabled={isActionLoading || !selectedRoleId}
+              >
+                Assign Role
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <AuditLogDetailDialog
           log={selectedLog}
@@ -1287,7 +1848,25 @@ export default function UserDetailPage() {
         </Dialog>
 
         {/* Edit User Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <Dialog 
+          open={showEditDialog} 
+          onOpenChange={(open) => {
+            setShowEditDialog(open)
+            if (!open && user) {
+              // Reset form data when dialog closes
+              setEditFormData({
+                email: user.email || '',
+                username: user.username || '',
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                phone: user.phone || '',
+                role: (user.role as 'user' | 'admin') || 'user',
+                isEmailVerified: user.isEmailVerified || false,
+                isActive: user.isActive !== false,
+              })
+            }
+          }}
+        >
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit User</DialogTitle>
@@ -1365,7 +1944,7 @@ export default function UserDetailPage() {
                     <SelectTrigger id="edit-role">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Administrator</SelectItem>
                     </SelectContent>

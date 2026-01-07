@@ -90,12 +90,25 @@ const ACTIVE_MODULES = [
     ]
   },
   {
+    key: 'permissions',
+    name: 'Roles & Permissions',
+    routes: ['/permissions'],
+    icon: 'IconShield',
+    menu: true,
+    order: 4,
+    permissions: {
+      can_view: true,
+      can_edit: true,
+      can_delete: true
+    }
+  },
+  {
     key: 'documentation',
     name: 'Documentation',
     routes: ['/documentation'],
     icon: 'IconFileDescription',
     menu: true,
-    order: 4,
+    order: 5,
     permissions: {
       can_view: true,
       can_edit: false,

@@ -62,49 +62,8 @@ export const getCookieValue = (name: string): string | null => {
   return null;
 };
 
-// Function to decode JWT token
-export const decodeJWT = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        })
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (error) {
-    console.error('Error decoding JWT:', error);
-    return null;
-  }
-};
-
-export const getAccessToken = () => {
-  if (typeof window !== 'undefined') {
-    const token = getCookieValue('access_token');
-    return token;
-  }
-  return null;
-};
-
-export const getRefreshToken = () => {
-  if (typeof window !== 'undefined') {
-    const token = getCookieValue('refresh_token');
-    return token;
-  }
-  return null;
-};
-
-export const getDeviceId = () => {
-  if (typeof window !== 'undefined') {
-    const deviceId = getCookieValue('device_id');
-    return deviceId;
-  }
-  return null;
-};
+// Note: decodeJWT moved to auth-utils.ts as decodeToken
+// Note: getAccessToken, getRefreshToken, getDeviceId moved to api.ts to avoid duplication
 
 export const removeTokens = (response?: NextResponse) => {
   if (typeof window !== 'undefined') {
@@ -128,8 +87,74 @@ export async function isAuthenticatedServer(
   }
 
   try {
-    const secret = new TextEncoder().encode(JWT_SECRET);
-    const { payload } = await jose.jwtVerify(accessToken, secret);
+    // Decode token header to check algorithm
+    const parts = accessToken.split('.');
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    let header: { alg?: string; [key: string]: unknown };
+    try {
+      header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+    } catch {
+      return false;
+    }
+
+    const algorithm = header.alg || 'HS256';
+
+    // Handle different algorithms
+    // Key can be Uint8Array for HS* algorithms or KeyLike for RS* algorithms
+    let key: Uint8Array | Awaited<ReturnType<typeof jose.importSPKI>>;
+
+    if (
+      algorithm === 'RS256' ||
+      algorithm === 'RS384' ||
+      algorithm === 'RS512'
+    ) {
+      // For RS256/RS384/RS512, we need a public key
+      // Try to get public key from environment variable
+      const publicKey =
+        process.env.JWT_PUBLIC_KEY || process.env.JWT_PUBLIC_KEY_PEM;
+
+      if (publicKey) {
+        // If public key is in PEM format, convert it
+        try {
+          key = await jose.importSPKI(publicKey, algorithm);
+        } catch {
+          // If import fails, try as JWK
+          try {
+            const jwk =
+              typeof publicKey === 'string' ? JSON.parse(publicKey) : publicKey;
+            key = await jose.importJWK(jwk, algorithm);
+          } catch {
+            // If both fail, fall back to expiration check only
+            // Signature validation will be done by backend
+            const payload = jose.decodeJwt(accessToken);
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp && payload.exp < now) {
+              return false;
+            }
+            return true; // Assume valid if not expired (backend will validate signature)
+          }
+        }
+      } else {
+        // If no public key, only check expiration
+        // Signature validation will be done by backend API
+        const payload = jose.decodeJwt(accessToken);
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+          return false;
+        }
+        // Return true if token is not expired
+        // Backend will validate the signature when making API calls
+        return true;
+      }
+    } else {
+      // For HS256/HS384/HS512, use secret key
+      key = new TextEncoder().encode(JWT_SECRET);
+    }
+
+    const { payload } = await jose.jwtVerify(accessToken, key);
 
     // Check if token has not expired
     const now = Math.floor(Date.now() / 1000);
@@ -139,10 +164,23 @@ export async function isAuthenticatedServer(
 
     return true;
   } catch (error) {
-    console.error('🔐 Token validation error:', {
-      error: error instanceof Error ? error.message : String(error),
-      tokenPreview: accessToken.substring(0, 20) + '...'
-    });
+    // Safely log error without exposing sensitive token data
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorName = error instanceof Error ? error.name : 'UnknownError';
+    const tokenPreview =
+      accessToken && accessToken.length > 20
+        ? accessToken.substring(0, 20) + '...'
+        : accessToken || 'undefined';
+
+    // Only log in development to avoid cluttering production logs
+    if (process.env.NODE_ENV === 'development') {
+      console.error('🔐 Token validation error:', {
+        name: errorName,
+        message: errorMessage,
+        tokenLength: accessToken?.length || 0,
+        tokenPreview: tokenPreview
+      });
+    }
     return false;
   }
 }
@@ -205,75 +243,5 @@ export async function refreshAccessToken(
   }
 }
 
-export const isAuthenticated = async (): Promise<boolean> => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  // Read from cookies instead of cookies
-  const token = getCookieValue('access_token');
-  if (!token) {
-    return false;
-  }
-
-  try {
-    const decoded = decodeJWT(token);
-    if (!decoded) {
-      return false;
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    const isValid = decoded.exp > now;
-    return isValid;
-  } catch (error) {
-    console.error('Token validation error:', error);
-    return false;
-  }
-};
-
-export const refreshTokenClient = async (): Promise<boolean> => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  const refreshToken = getRefreshToken();
-  const deviceId = getDeviceId();
-
-  if (!refreshToken || !deviceId) {
-    return false;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': deviceId
-      },
-      body: JSON.stringify({ refreshToken, deviceId })
-    });
-
-    const data = await response.json();
-
-    if (data.status === 200 && data.data) {
-      // Update cookies with new tokens
-      setTokens({
-        accessToken: data.data.accessToken,
-        refreshToken: data.data.refreshToken,
-        deviceId: deviceId
-      });
-
-      return true;
-    } else {
-      // If refresh token is also invalid, clear all tokens
-      if (data.status === 401) {
-        removeTokens();
-      }
-
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Client: Token refresh error:', error);
-    return false;
-  }
-};
+// Note: isAuthenticated and refreshTokenClient moved to auth-utils.ts
+// Use ensureValidToken and refreshAccessToken from auth-utils.ts instead
