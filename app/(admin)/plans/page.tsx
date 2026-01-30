@@ -4,14 +4,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { PlansDataTable } from "@/components/plans/plans-data-table"
 import { useSubscriptionPlansStore } from "@/store/useSubscriptionPlansStore"
 import { CreateEditPlanDialog } from "@/components/plans/create-edit-plan-dialog"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { SubscriptionPlan } from "@/interface/SubscriptionPlan"
 import { Button } from "@/components/ui/button"
+import { deletePlan } from "@/lib/api/subscription-plans"
+import { toast } from "sonner"
 
 export default function Page() { 
   const { plans, isLoading, error, total, page, limit, fetchPlans } = useSubscriptionPlansStore()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null)
   const [duplicatingPlan, setDuplicatingPlan] = useState<SubscriptionPlan | null>(null)
+  const [planToDelete, setPlanToDelete] = useState<SubscriptionPlan | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Initial load
   useEffect(() => {
@@ -60,6 +65,29 @@ export default function Page() {
     fetchPlans({ page, limit })
   }
 
+  const handleDelete = useCallback((plan: SubscriptionPlan) => {
+    setPlanToDelete(plan)
+  }, [])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!planToDelete) return
+    try {
+      setIsDeleting(true)
+      await deletePlan(planToDelete.id)
+      toast.success("Plan deleted successfully")
+      setPlanToDelete(null)
+      await fetchPlans({ page, limit })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete plan")
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [planToDelete, page, limit, fetchPlans])
+
+  const handleDeleteDialogClose = useCallback((open: boolean) => {
+    if (!open) setPlanToDelete(null)
+  }, [])
+
   const handleDialogClose = (open: boolean) => {
     setDialogOpen(open)
     if (!open) {
@@ -103,6 +131,7 @@ export default function Page() {
             isLoading={isLoading}
             onEdit={handleEdit}
             onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
           />
         </div>
       </div>
@@ -113,6 +142,16 @@ export default function Page() {
         plan={planForDialog}
         originalPlanIdForDuplication={originalPlanIdForDuplication}
         onSuccess={handleDialogSuccess}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!planToDelete}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={handleDeleteConfirm}
+        title="Delete subscription plan"
+        description="This action cannot be undone. This will permanently delete the plan."
+        itemName={planToDelete?.name}
+        isLoading={isDeleting}
       />
     </div>
   )

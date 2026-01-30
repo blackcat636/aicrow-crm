@@ -227,6 +227,30 @@ export async function updatePlan(
   }
 }
 
+// Delete subscription plan
+export async function deletePlan(id: number): Promise<{ status: number; message: string }> {
+  try {
+    const response = await fetchWithAuth(`/api/admin/subscription-plans/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = (await response.json()) as { status?: number; message?: string };
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete subscription plan');
+    }
+
+    return {
+      status: data.status ?? 200,
+      message: data.message ?? 'Plan deleted successfully'
+    };
+  } catch (error) {
+    console.error('Error deleting subscription plan:', error);
+    throw error;
+  }
+}
+
 // Get plan features
 export async function getPlanFeatures(
   planId: number

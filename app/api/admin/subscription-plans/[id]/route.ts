@@ -212,3 +212,82 @@ export async function PUT(
     );
   }
 }
+
+// DELETE /admin/subscription-plans/{id} - Delete subscription plan
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    if (!id || isNaN(Number(id))) {
+      return NextResponse.json(
+        {
+          status: 400,
+          message: 'Invalid subscription plan ID'
+        },
+        { status: 400 }
+      );
+    }
+
+    const authHeader =
+      request.headers.get('authorization') ||
+      (request.cookies.get('access_token')?.value
+        ? `Bearer ${request.cookies.get('access_token')?.value}`
+        : '');
+
+    const API_URL = (
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
+    ).replace(/\/+$/, '');
+
+    const backendUrl = `${API_URL}/admin/subscription-plans/${id}`;
+
+    const response = await fetch(backendUrl, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader && { Authorization: authHeader })
+      }
+    });
+
+    if (!response.ok) {
+      let errorData: { message?: string; error?: string } = {};
+      const contentType = response.headers.get('content-type');
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          const text = await response.text();
+          errorData = { message: text || `Backend returned status ${response.status}` };
+        }
+      } catch {
+        errorData = { message: `Backend returned status ${response.status}` };
+      }
+      return NextResponse.json(
+        {
+          status: response.status,
+          message: errorData.message || errorData.error || 'Failed to delete subscription plan'
+        },
+        { status: response.status }
+      );
+    }
+
+    const rawData = await response.json().catch(() => ({}));
+    return NextResponse.json({
+      status: rawData.status ?? 200,
+      message: rawData.message ?? 'Subscription plan deleted successfully',
+      data: rawData.data ?? null
+    });
+  } catch (error) {
+    console.error('Error deleting subscription plan:', error);
+    return NextResponse.json(
+      {
+        status: 500,
+        message: 'Failed to delete subscription plan',
+        error: 'Internal server error'
+      },
+      { status: 500 }
+    );
+  }
+}

@@ -13,6 +13,7 @@ import {
   IconEdit,
   IconCopy,
   IconStar,
+  IconTrash,
 } from "@tabler/icons-react"
 import {
   ColumnDef,
@@ -266,6 +267,7 @@ export function PlansDataTable({
   isLoading = false,
   onEdit,
   onDuplicate,
+  onDelete,
 }: {
   data: SubscriptionPlan[]
   total: number
@@ -276,6 +278,7 @@ export function PlansDataTable({
   isLoading?: boolean
   onEdit?: (plan: SubscriptionPlan) => void
   onDuplicate?: (plan: SubscriptionPlan) => void
+  onDelete?: (plan: SubscriptionPlan) => void
 }) {
   const [data, setData] = React.useState(() => initialData)
   const [columnVisibility, setColumnVisibility] =
@@ -349,6 +352,15 @@ export function PlansDataTable({
                   disabled={isLoading}
                 >
                   <IconCopy className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => onDelete?.(plan)}
+                  disabled={isLoading}
+                >
+                  <IconTrash className="h-4 w-4" />
                 </Button>
               </div>
             );
