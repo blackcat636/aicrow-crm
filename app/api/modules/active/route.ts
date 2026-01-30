@@ -103,12 +103,25 @@ const ACTIVE_MODULES = [
     }
   },
   {
+    key: 'subscription-plans',
+    name: 'Subscription Plans',
+    routes: ['/plans'],
+    icon: 'IconCreditCard',
+    menu: true,
+    order: 5,
+    permissions: {
+      can_view: true,
+      can_edit: true,
+      can_delete: false
+    }
+  },
+  {
     key: 'documentation',
     name: 'Documentation',
     routes: ['/documentation'],
     icon: 'IconFileDescription',
     menu: true,
-    order: 5,
+    order: 6,
     permissions: {
       can_view: true,
       can_edit: false,
