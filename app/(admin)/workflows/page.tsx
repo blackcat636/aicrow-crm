@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { IconSearch } from "@tabler/icons-react"
 import { WorkflowFilters } from '@/lib/api/workflows'
+import { NoAccess } from "@/components/common/no-access"
 
 const sanitizeNumericId = (value?: string | null) => {
   if (!value) {
@@ -206,7 +207,17 @@ export default function Page() {
   };
 
   if (isLoading && workflows.length === 0) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (error) {
+    return (
+      <div className="flex flex-1 flex-col px-6 pb-6">
+        <NoAccess
+          title="No access to Workflows"
+          message={error}
+          note="Please contact an administrator to obtain access."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col">

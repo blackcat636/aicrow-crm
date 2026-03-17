@@ -3,7 +3,11 @@ import * as jose from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
+// Remove trailing slash to avoid double slashes in requests
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010').replace(
+  /\/+$/,
+  ''
+);
 
 export interface AuthTokens {
   accessToken: string;
@@ -195,13 +199,14 @@ export async function refreshAccessToken(
   }
 
   try {
+    // Swagger expects: header x-device-id + body { refreshToken }
     const response = await globalThis.fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-device-id': deviceId
       },
-      body: JSON.stringify({ refreshToken, deviceId })
+      body: JSON.stringify({ refreshToken })
     });
 
     const data = await response.json();

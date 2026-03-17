@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useModulesStore } from "@/store/useModulesStore"
 import { Module } from "@/interface/Module"
+import { areRouteDependenciesMet } from "@/lib/access-navigation"
 
 // Icon mapping for dynamic modules
 const iconMap: Record<string, Icon> = {
@@ -42,13 +43,52 @@ const iconMap: Record<string, Icon> = {
 };
 
 // Convert module to nav item format
-const convertModuleToNavItem = (module: Module) => {
+const convertModuleToNavItem = (
+  module: Module,
+  opts: {
+    getModuleByRoute: (route: string) => Module | undefined;
+    hasPermission: (moduleKey: string, permission: keyof Module["permissions"]) => boolean;
+    isRouteAccessible: (route: string) => boolean;
+  }
+) => {
   const IconComponent = iconMap[module.icon] || IconListDetails;
   
-  const items = module.subItems?.map(subItem => ({
+  const items =
+    module.subItems
+      ?.filter((subItem) => {
+        // If route dependencies are not met, hide the sub-item entirely.
+        if (!opts.isRouteAccessible(subItem.url)) {
+          return false;
+        }
+        if (!areRouteDependenciesMet(subItem.url, (k, p) => opts.hasPermission(k, p))) {
+          return false;
+        }
+
+        // Prefer explicit sub-item permissions if present.
+        if (subItem.permissions?.can_view === false) {
+          return false;
+        }
+        if (subItem.permissions?.can_view === true) {
+          return true;
+        }
+
+        // Fallback: if sub-item route belongs to another module, respect that module's view permission.
+        const targetModule = opts.getModuleByRoute(subItem.url);
+        if (!targetModule) {
+          return true;
+        }
+        return opts.hasPermission(targetModule.key, "can_view");
+      })
+      .map((subItem) => ({
       title: subItem.title,
       url: subItem.url,
     })) || [];
+
+  // If module is configured with sub-items but none are visible, hide the module entirely.
+  // This prevents rendering a broken top-level link (e.g. /workflows) that leads to 403.
+  if (module.subItems?.length && items.length === 0) {
+    return null;
+  }
 
   // Inject additional sub-items under Documentation
   if (module.key === 'documentation') {
@@ -72,7 +112,7 @@ const convertModuleToNavItem = (module: Module) => {
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { modules, fetchModules, isLoading } = useModulesStore();
+  const { modules, fetchModules, isLoading, permissionsReady, hasPermission, getModuleByRoute, isRouteAccessible } = useModulesStore();
 
   // Fetch modules on component mount
   React.useEffect(() => {
@@ -81,14 +121,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Convert modules to nav items, sorted by order
   const navMain = modules
-    .filter(module => module.menu)
+    .filter((module) => module.menu && hasPermission(module.key, "can_view"))
     .sort((a, b) => a.order - b.order)
-    .map(convertModuleToNavItem);
+    .map((module) => convertModuleToNavItem(module, { getModuleByRoute, hasPermission, isRouteAccessible }))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
-  // Debug logging
   React.useEffect(() => {
-    // Modules and nav items are ready
-  }, [modules, navMain]);
+    if (process.env.NODE_ENV !== "development") return;
+    console.debug("[sidebar] menu computed", {
+      modulesCount: modules.length,
+      navMainCount: navMain.length,
+      isLoading,
+      keys: modules.map((m) => m.key),
+    });
+  }, [modules, navMain, isLoading]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props} className="border-r border-sidebar-border/50 backdrop-blur-xl dark:bg-[#031138]/70 dark:backdrop-blur-xl">
@@ -112,11 +158,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          {isLoading ? (
+          {isLoading || !permissionsReady ? (
             <div className="flex items-center justify-center p-4 animate-pulse">
               <div className="flex flex-col items-center gap-2">
                 <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                <div className="text-sm text-muted-foreground">Loading modules...</div>
+                <div className="text-sm text-muted-foreground">Loading permissions...</div>
               </div>
             </div>
           ) : (

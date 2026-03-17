@@ -57,6 +57,7 @@ import Link from "next/link"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs } from "@/components/ui/tabs"
 import { getUserInfoFromLog } from "@/components/audit-logs/utils"
+import { NoAccess } from "@/components/common/no-access"
 
 interface AuditLogsDataTableProps {
   data: AuditLog[]
@@ -68,6 +69,7 @@ interface AuditLogsDataTableProps {
   isLoading?: boolean
   onViewDetails?: (log: AuditLog) => void
   hideUserId?: boolean
+  error?: string | null
 }
 
 export function AuditLogsDataTable({
@@ -80,6 +82,7 @@ export function AuditLogsDataTable({
   isLoading = false,
   onViewDetails,
   hideUserId = false,
+  error = null,
 }: AuditLogsDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'createdAt', desc: true }
@@ -487,6 +490,17 @@ export function AuditLogsDataTable({
     pageCount: total > 0 && limit > 0 ? Math.ceil(total / limit) : 1,
     manualPagination: true,
   })
+
+  // Render after all hooks have been called to avoid hook order mismatches.
+  if (!isLoading && error) {
+    return (
+      <NoAccess
+        title="No access to Audit Logs"
+        message={error}
+        note="Please contact an administrator to obtain access."
+      />
+    )
+  }
 
   return (
     <Tabs defaultValue="outline" className="w-full flex-col justify-start gap-6">

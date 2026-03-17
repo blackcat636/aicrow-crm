@@ -30,6 +30,7 @@ import { TransactionsDataTable } from '@/components/balance/transactions-data-ta
 import { IconCoins, IconUser, IconMail, IconArrowLeft, IconLoader2, IconCalendar } from '@tabler/icons-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useModulesStore } from '@/store/useModulesStore'
 
 const sanitizeNumeric = (value?: string | null) => {
   if (!value) {
@@ -56,6 +57,7 @@ export default function UserBalancesPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const userId = params?.userId ? parseInt(params.userId as string, 10) : null
+  const overrideSubItemPermissions = useModulesStore((s) => s.overrideSubItemPermissions)
 
   const [user, setUser] = useState<UserInfoDto | null>(null)
   const [balances, setBalances] = useState<AdminBalanceDto[]>([])
@@ -90,6 +92,18 @@ export default function UserBalancesPage() {
     setError(null)
     try {
       const response = await getUserBalances(userId)
+
+      if (response.status === 403) {
+        overrideSubItemPermissions('balance', '/balance/users', {
+          can_view: false,
+          can_edit: false,
+          can_delete: false,
+        })
+      }
+
+      if (response.status !== 200 && response.status !== 404) {
+        throw new Error(response.message || 'Failed to load user balances')
+      }
       setUser(response.user)
       setBalances(response.data)
       
@@ -108,7 +122,7 @@ export default function UserBalancesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [userId])
+  }, [userId, overrideSubItemPermissions])
 
   useEffect(() => {
     if (userId) {

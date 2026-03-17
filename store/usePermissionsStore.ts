@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getAllPermissions, getChildPermissions } from '@/lib/api/permissions';
 import { Permission, PermissionsApiResponse } from '@/interface/Permission';
+import { useModulesStore } from '@/store/useModulesStore';
 
 interface PermissionsStore {
   permissions: Permission[];
@@ -18,6 +19,24 @@ export const usePermissionsStore = create<PermissionsStore>((set, get) => ({
   error: null,
 
   fetchPermissions: async () => {
+    let modulesState = useModulesStore.getState();
+    if (!modulesState.permissionsReady) {
+      await modulesState.fetchModules();
+      modulesState = useModulesStore.getState();
+      if (!modulesState.permissionsReady) {
+        return;
+      }
+    }
+
+    if (!modulesState.hasPermission('permissions', 'can_view')) {
+      set({
+        permissions: [],
+        isLoading: false,
+        error: "You don't have permission to view permissions."
+      });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
       const response = await getAllPermissions();
@@ -59,10 +78,25 @@ export const usePermissionsStore = create<PermissionsStore>((set, get) => ({
           error: null
         });
       } else {
-        set({ error: response.message || 'Error loading permissions' });
+        const friendlyMessage =
+          response.status === 403
+            ? "You don't have permission to view permissions."
+            : response.message || 'Error loading permissions.';
+        set({ error: friendlyMessage });
+
+        if (response.status === 403) {
+          // Keep menu/UI consistent: if backend denies, hide the whole module.
+          useModulesStore.getState().overrideModulePermissions('permissions', {
+            can_view: false,
+            can_edit: false,
+            can_delete: false
+          });
+        }
       }
     } catch (error) {
-      set({ error: 'Error loading permissions' });
+      const friendlyMessage =
+        error instanceof Error ? error.message : 'Error loading permissions.';
+      set({ error: friendlyMessage });
     } finally {
       set({ isLoading: false });
     }

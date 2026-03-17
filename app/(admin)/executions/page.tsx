@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { IconActivity, IconClock, IconCircleCheckFilled, IconCircleXFilled } from '@tabler/icons-react'
+import { NoAccess } from '@/components/common/no-access'
 
 const sanitizeNumericId = (value?: string | null) => {
   if (!value) {
@@ -579,15 +580,11 @@ export default function ExecutionsPage() {
               </div>
             </div>
             {error ? (
-              <div className="text-center py-8">
-                <p className="text-destructive mb-4">{error}</p>
-                <button 
-                  onClick={() => fetchExecutions(page, limit, filters)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                >
-                  Retry
-                </button>
-              </div>
+              <NoAccess
+                title="No access to Executions"
+                message={error}
+                note="Please contact an administrator to obtain access."
+              />
             ) : (
               <ExecutionsDataTable 
                 data={executions} 

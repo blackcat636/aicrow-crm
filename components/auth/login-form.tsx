@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useUserStore } from "@/store/useUserStore"
+import { useModulesStore } from "@/store/useModulesStore"
+import { areRouteDependenciesMet, pickFirstAccessiblePath } from "@/lib/access-navigation"
 import { login } from "@/lib/api"
 
 // interface LoginResponse {
@@ -23,6 +25,7 @@ export function LoginForm() {
     const [isClient, setIsClient] = useState(false)
     const router = useRouter()
     const { setUser } = useUserStore()
+    const fetchModules = useModulesStore((s) => s.fetchModules)
 
     useEffect(() => {
         setIsClient(true)
@@ -39,8 +42,13 @@ export function LoginForm() {
             if (result.success && result.user) {
                 setUser(result.user)
                 
-                // Redirect to users page after login
-                router.push('/users')
+                // Load modules and redirect to first accessible page after login
+                await fetchModules()
+                const modulesState = useModulesStore.getState()
+                const firstAccessible = pickFirstAccessiblePath(modulesState.modules, (p) =>
+                  modulesState.isRouteAccessible(p) && areRouteDependenciesMet(p, modulesState.hasPermission)
+                ) ?? "/documentation"
+                router.replace(firstAccessible)
             } else {
                 setError(result.message || "Authentication error")
             }

@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { ModuleRouteGuard } from "@/components/auth/module-route-guard"
 import { ModuleRenderer } from "@/components/modules/module-renderer"
+import { LastPathTracker } from "@/components/auth/last-path-tracker"
 import {
   SidebarInset,
   SidebarProvider,
@@ -19,6 +20,7 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
+      <LastPathTracker />
       <AppSidebar variant="inset" />
       <SidebarInset className="overflow-x-hidden">
         <SiteHeader />

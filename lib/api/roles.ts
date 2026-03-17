@@ -360,7 +360,14 @@ export async function getUserRoles(userId: number): Promise<{
     const rawData = await response.json();
 
     if (!response.ok) {
-      throw new Error(rawData.message || 'Failed to fetch user roles');
+      // Return a structured response instead of throwing, so callers (stores/UI)
+      // can decide how to handle expected authorization errors (e.g. 403).
+      return {
+        status: response.status,
+        message: rawData?.message || 'Failed to fetch user roles',
+        data: [],
+        total: 0
+      };
     }
 
     return {
@@ -370,8 +377,18 @@ export async function getUserRoles(userId: number): Promise<{
       total: rawData.total || 0
     };
   } catch (error) {
-    console.error('Error fetching user roles:', error);
-    throw error;
+    // Network/parse errors should still be visible during development, but do not throw:
+    // callers treat failures as "no roles" and can show a friendly UI state.
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching user roles:', error);
+    }
+
+    return {
+      status: 0,
+      message: error instanceof Error ? error.message : 'Network error',
+      data: [],
+      total: 0
+    };
   }
 }
 
@@ -390,7 +407,14 @@ export async function getUserPermissions(userId: number): Promise<{
     const rawData = await response.json();
 
     if (!response.ok) {
-      throw new Error(rawData.message || 'Failed to fetch user permissions');
+      // Return a structured response instead of throwing, so callers (stores/UI)
+      // can decide how to handle expected authorization errors (e.g. 403).
+      return {
+        status: response.status,
+        message: rawData?.message || 'Failed to fetch user permissions',
+        data: [],
+        total: 0
+      };
     }
 
     return {
@@ -400,7 +424,17 @@ export async function getUserPermissions(userId: number): Promise<{
       total: rawData.total || 0
     };
   } catch (error) {
-    console.error('Error fetching user permissions:', error);
-    throw error;
+    // Network/parse errors should still be visible during development, but do not throw:
+    // callers treat failures as "no permissions" and can show a friendly UI state.
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching user permissions:', error);
+    }
+
+    return {
+      status: 0,
+      message: error instanceof Error ? error.message : 'Network error',
+      data: [],
+      total: 0
+    };
   }
 }

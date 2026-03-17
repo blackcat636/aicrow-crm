@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getAllWorkflows, WorkflowFilters } from '@/lib/api/workflows';
 import { Workflow } from '@/interface/Workflow';
+import { useModulesStore } from '@/store/useModulesStore';
 
 interface WorkflowsStore {
   workflows: Workflow[];
@@ -73,6 +74,13 @@ export const useWorkflowsStore = create<WorkflowsStore>((set, get) => ({
         });
       } else {
         set({ error: response.message || 'Error loading workflows' });
+        if (response.status === 403) {
+          useModulesStore.getState().overrideSubItemPermissions('automations', '/workflows', {
+            can_view: false,
+            can_edit: false,
+            can_delete: false
+          });
+        }
       }
     } catch (error) {
       console.error('❌ Store: Error in fetchWorkflows:', error);

@@ -6,6 +6,7 @@ import {
   deleteUserWorkflow,
   toggleUserWorkflow
 } from '@/lib/api/user-workflows';
+import { useModulesStore } from '@/store/useModulesStore';
 import {
   UserWorkflow,
   CreateUserWorkflowDto,
@@ -110,6 +111,13 @@ export const useUserWorkflowsStore = create<UserWorkflowsStore>((set, get) => ({
         });
       } else {
         set({ error: response.message || 'Error loading user workflows' });
+        if (response.status === 403) {
+          useModulesStore.getState().overrideSubItemPermissions('automations', '/user-workflows', {
+            can_view: false,
+            can_edit: false,
+            can_delete: false
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading user workflows:', error);

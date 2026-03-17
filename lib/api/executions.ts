@@ -3,7 +3,7 @@ import { fetchWithAuth } from '../api';
 
 // Remove trailing slash from API_URL to avoid double slashes
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
 ).replace(/\/+$/, '');
 
 export interface ApiResponse<T> {

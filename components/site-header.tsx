@@ -11,9 +11,6 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4 bg-gradient-to-b from-transparent via-border to-transparent"
         />
-        <h1 className="text-base font-medium bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-          Documents
-        </h1>
         <div className="ml-auto flex items-center gap-2">
           <ModeToggle />
         </div>

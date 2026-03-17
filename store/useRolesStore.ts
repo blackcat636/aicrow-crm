@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getAllRoles } from '@/lib/api/roles';
 import { Role, RolesApiResponse } from '@/interface/Role';
+import { useModulesStore } from '@/store/useModulesStore';
 
 interface RolesStore {
   roles: Role[];
@@ -18,6 +19,24 @@ export const useRolesStore = create<RolesStore>((set, get) => ({
   error: null,
 
   fetchRoles: async () => {
+    let modulesState = useModulesStore.getState();
+    if (!modulesState.permissionsReady) {
+      await modulesState.fetchModules();
+      modulesState = useModulesStore.getState();
+      if (!modulesState.permissionsReady) {
+        return;
+      }
+    }
+
+    if (!modulesState.hasPermission('permissions', 'can_view')) {
+      set({
+        roles: [],
+        isLoading: false,
+        error: "You don't have permission to view roles."
+      });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
       const response = await getAllRoles();
@@ -30,10 +49,25 @@ export const useRolesStore = create<RolesStore>((set, get) => ({
           error: null
         });
       } else {
-        set({ error: response.message || 'Error loading roles' });
+        const friendlyMessage =
+          response.status === 403
+            ? "You don't have permission to view roles."
+            : response.message || 'Error loading roles.';
+        set({ error: friendlyMessage });
+
+        if (response.status === 403) {
+          // Keep menu/UI consistent: if backend denies, hide the whole module.
+          useModulesStore.getState().overrideModulePermissions('permissions', {
+            can_view: false,
+            can_edit: false,
+            can_delete: false
+          });
+        }
       }
     } catch (error) {
-      set({ error: 'Error loading roles' });
+      const friendlyMessage =
+        error instanceof Error ? error.message : 'Error loading roles.';
+      set({ error: friendlyMessage });
     } finally {
       set({ isLoading: false });
     }

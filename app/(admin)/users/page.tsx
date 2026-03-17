@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { useEffect, useState, useCallback } from 'react';
 import { DataTable } from "@/components/users/data-table"
 import { useUsersStore } from "@/store/useUsersStore"
+import { useModulesStore } from "@/store/useModulesStore"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { CreateUserDialog } from "@/components/users/create-user-dialog"
 import { UserFilters } from '@/lib/api/users'
+import { NoAccess } from '@/components/common/no-access'
 
 const sanitizeNumericId = (value?: string) => {
   if (!value) {
@@ -82,6 +84,13 @@ type FilterOverrides = Partial<{
 
 export default function Page() { 
   const { users, isLoading, error, total, page, limit, fetchUsers } = useUsersStore()
+  const { modules, isLoading: isModulesLoading, error: modulesError, hasPermission } = useModulesStore()
+
+  // Hide privileged actions until modules are loaded (avoid briefly showing forbidden UI).
+  const canCreateUser =
+    !modulesError &&
+    !(isModulesLoading && modules.length === 0) &&
+    hasPermission("users", "can_edit");
   
   // Local state for filter inputs
   const [idInput, setIdInput] = useState<string>('');
@@ -208,7 +217,29 @@ export default function Page() {
   };
 
   if (isLoading && users.length === 0) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+
+  if (!isLoading && error) {
+    return (
+      <div className="flex flex-1 flex-col px-6 pb-6">
+        <div className="flex justify-between items-center py-4">
+          <div>
+            <h1 className="text-2xl font-bold">Users</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage platform users
+            </p>
+          </div>
+          {canCreateUser ? <CreateUserDialog /> : null}
+        </div>
+        <div className="flex-1">
+          <NoAccess
+            title="No access to Users"
+            message={error}
+            note="Please contact an administrator to obtain access."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -221,7 +252,7 @@ export default function Page() {
             </p>
           </div>
           <div>
-            <CreateUserDialog />
+            {canCreateUser ? <CreateUserDialog /> : null}
           </div>
         </div>
         

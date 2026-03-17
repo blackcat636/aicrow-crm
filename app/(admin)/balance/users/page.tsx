@@ -9,11 +9,15 @@ import { UserWithBalancesDto } from '@/interface/Balance'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { UsersBalancesDataTable } from '@/components/balance/users-balances-data-table'
 import { IconCoins, IconUser, IconLoader2 } from '@tabler/icons-react'
-import { toast } from 'sonner'
+import { NoAccess } from '@/components/common/no-access'
+import { useModulesStore } from '@/store/useModulesStore'
 
 export default function UsersWithBalancesPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const overrideSubItemPermissions = useModulesStore((s) => s.overrideSubItemPermissions)
+  const permissionsReady = useModulesStore((s) => s.permissionsReady)
+  const isRouteAccessible = useModulesStore((s) => s.isRouteAccessible)
   const [usersWithBalances, setUsersWithBalances] = useState<UserWithBalancesDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,23 +34,50 @@ export default function UsersWithBalancesPage() {
   }, [searchParams])
 
   useEffect(() => {
+    if (!permissionsReady) return
+    if (!isRouteAccessible('/balance/users')) {
+      setIsLoading(false)
+      setError("You don't have permission to view users with balances.")
+      return
+    }
     fetchUsersWithBalances()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionsReady])
 
   const fetchUsersWithBalances = async () => {
     setIsLoading(true)
     setError(null)
     try {
       const response = await getAllUsersWithBalances()
+      if (response.status === 403) {
+        overrideSubItemPermissions('balance', '/balance/users', {
+          can_view: false,
+          can_edit: false,
+          can_delete: false,
+        })
+        setUsersWithBalances([])
+        setTotalUsers(0)
+        setTotalBalances(0)
+        setError("You don't have permission to view users with balances.")
+        return
+      }
+
+      if (response.status !== 200) {
+        setUsersWithBalances([])
+        setTotalUsers(0)
+        setTotalBalances(0)
+        setError(response.message || 'Failed to load users with balances')
+        return
+      }
       setUsersWithBalances(response.data)
       setTotalUsers(response.total_users)
       setTotalBalances(response.total_balances)
     } catch (err) {
-      console.error('Failed to fetch users with balances:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load users with balances')
-      toast.error('Failed to load users with balances', {
-        description: err instanceof Error ? err.message : 'Unknown error occurred'
-      })
+      const rawMessage = err instanceof Error ? err.message : 'Failed to load users with balances'
+      const friendlyMessage = rawMessage.toLowerCase().includes('forbidden')
+        ? "You don't have permission to view users with balances."
+        : rawMessage
+      setError(friendlyMessage)
     } finally {
       setIsLoading(false)
     }
@@ -80,28 +111,6 @@ export default function UsersWithBalancesPage() {
       <div className="flex flex-1 flex-col items-center justify-center">
         <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         <p className="mt-4 text-muted-foreground">Loading users with balances...</p>
-      </div>
-    )
-  }
-
-  if (error && usersWithBalances.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <div className="@container/main flex flex-1 flex-col gap-6 px-6 pb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <p className="text-destructive mb-4">{error}</p>
-                <button 
-                  onClick={fetchUsersWithBalances}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                >
-                  Retry
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     )
   }
@@ -162,15 +171,11 @@ export default function UsersWithBalancesPage() {
           </CardHeader>
           <CardContent>
             {error ? (
-              <div className="text-center py-8">
-                <p className="text-destructive mb-4">{error}</p>
-                <button 
-                  onClick={fetchUsersWithBalances}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                >
-                  Retry
-                </button>
-              </div>
+              <NoAccess
+                title="No access to Users with Balances"
+                message={error}
+                note="Please contact an administrator to obtain access."
+              />
             ) : (
               <UsersBalancesDataTable 
                 data={paginatedData} 

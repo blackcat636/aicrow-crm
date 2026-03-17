@@ -75,9 +75,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tabs,
-} from "@/components/ui/tabs"
+import { Tabs } from "@/components/ui/tabs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,7 +108,9 @@ import {
 import { useUsersStore } from "@/store/useUsersStore"
 import { useState } from "react"
 import { IconAlertTriangle } from "@tabler/icons-react"
+import { NoAccess } from "@/components/common/no-access"
 import { toast } from "sonner"
+import { useModulesStore } from "@/store/useModulesStore"
 
 // User Actions Component
 function UserActions({ user }: { user: User }) {
@@ -119,6 +119,17 @@ function UserActions({ user }: { user: User }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { modules, isLoading: isModulesLoading, error: modulesError, hasPermission } = useModulesStore();
+
+  // Hide privileged actions until modules are loaded (avoid briefly showing forbidden UI).
+  const canEdit =
+    !modulesError &&
+    !(isModulesLoading && modules.length === 0) &&
+    hasPermission("users", "can_edit");
+  const canDelete =
+    !modulesError &&
+    !(isModulesLoading && modules.length === 0) &&
+    hasPermission("users", "can_delete");
 
   const handleView = () => {
     router.push(`/users/${user.id}`);
@@ -188,32 +199,40 @@ function UserActions({ user }: { user: User }) {
             <IconEye className="mr-2 h-4 w-4" />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleEdit}>
-            <IconEdit className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleToggleStatus}>
-            {isActive ? (
-              <>
-                <IconToggleLeft className="mr-2 h-4 w-4" />
-                Block User
-              </>
-            ) : (
-              <>
-                <IconToggleRight className="mr-2 h-4 w-4" />
-                Activate User
-              </>
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            onClick={handleDeleteClick}
-            className="text-red-600 focus:text-red-600"
-          >
-            <IconTrash className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
+          {canEdit ? (
+            <>
+              <DropdownMenuItem onClick={handleEdit}>
+                <IconEdit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleToggleStatus}>
+                {isActive ? (
+                  <>
+                    <IconToggleLeft className="mr-2 h-4 w-4" />
+                    Block User
+                  </>
+                ) : (
+                  <>
+                    <IconToggleRight className="mr-2 h-4 w-4" />
+                    Activate User
+                  </>
+                )}
+              </DropdownMenuItem>
+            </>
+          ) : null}
+          {canDelete ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleDeleteClick}
+                className="text-red-600 focus:text-red-600"
+              >
+                <IconTrash className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -683,6 +702,7 @@ export function DataTable({
   onPageChange,
   onPageSizeChange,
   isLoading = false,
+  error = null,
 }: {
   data: User[]
   total: number
@@ -691,6 +711,7 @@ export function DataTable({
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
   isLoading?: boolean
+  error?: string | null
 }) {
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
@@ -775,6 +796,16 @@ export function DataTable({
     pageCount: total > 0 && limit > 0 ? Math.ceil(total / limit) : 1, // Use total count from API
     manualPagination: true, // Indicate that pagination is controlled externally
   })
+
+  if (!isLoading && error) {
+    return (
+      <NoAccess
+        title="No access to Users"
+        message={error}
+        note="Please contact an administrator to obtain access."
+      />
+    )
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event

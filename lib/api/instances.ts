@@ -7,7 +7,7 @@ import { fetchWithAuth } from '../api';
 
 // Remove trailing slash from API_URL to avoid double slashes
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
 ).replace(/\/+$/, '');
 
 export interface ApiResponse<T> {
@@ -25,7 +25,11 @@ export async function getAllInstances(): Promise<ApiResponse<Instance[]>> {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch instances');
+      return {
+        status: response.status,
+        message: data?.message || 'Failed to fetch instances',
+        data: []
+      };
     }
 
     return {
@@ -36,7 +40,7 @@ export async function getAllInstances(): Promise<ApiResponse<Instance[]>> {
   } catch (error) {
     console.error('Error fetching instances:', error);
     return {
-      status: 500,
+      status: 0,
       message:
         error instanceof Error ? error.message : 'Failed to fetch instances',
       data: []
@@ -145,7 +149,32 @@ export async function createInstance(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to create instance');
+      return {
+        status: response.status,
+        message: data?.message || 'Failed to create instance',
+        data: {
+          id: 0,
+          name: '',
+          description: null,
+          apiUrl: '',
+          apiKey: '',
+          isDefault: false,
+          isActive: false,
+          syncProjects: false,
+          syncWorkflows: false,
+          syncExecutions: false,
+          syncInterval: 30,
+          version: null,
+          lastSyncAt: '',
+          lastErrorAt: null,
+          lastError: null,
+          totalProjects: 0,
+          totalWorkflows: 0,
+          totalExecutions: 0,
+          createdAt: '',
+          updatedAt: ''
+        }
+      };
     }
 
     return {
@@ -156,7 +185,7 @@ export async function createInstance(
   } catch (error) {
     console.error('Error creating instance:', error);
     return {
-      status: 500,
+      status: 0,
       message:
         error instanceof Error ? error.message : 'Failed to create instance',
       data: {
@@ -204,7 +233,32 @@ export async function updateInstance(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to update instance');
+      return {
+        status: response.status,
+        message: data?.message || 'Failed to update instance',
+        data: {
+          id: 0,
+          name: '',
+          description: null,
+          apiUrl: '',
+          apiKey: '',
+          isDefault: false,
+          isActive: false,
+          syncProjects: false,
+          syncWorkflows: false,
+          syncExecutions: false,
+          syncInterval: 30,
+          version: null,
+          lastSyncAt: '',
+          lastErrorAt: null,
+          lastError: null,
+          totalProjects: 0,
+          totalWorkflows: 0,
+          totalExecutions: 0,
+          createdAt: '',
+          updatedAt: ''
+        }
+      };
     }
 
     return {
@@ -215,7 +269,7 @@ export async function updateInstance(
   } catch (error) {
     console.error('Error updating instance:', error);
     return {
-      status: 500,
+      status: 0,
       message:
         error instanceof Error ? error.message : 'Failed to update instance',
       data: {

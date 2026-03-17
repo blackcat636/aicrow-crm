@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
+import { NoAccess } from "@/components/common/no-access"
 
 const sanitizeNumericId = (value?: string | null) => {
   if (!value) {
@@ -46,7 +47,8 @@ export default function UserWorkflowsOverviewPage() {
     limit,
     isActive,
     workflowId,
-    fetchUserWorkflows 
+    fetchUserWorkflows,
+    error
   } = useUserWorkflowsStore()
   const [isActiveFilter, setIsActiveFilter] = useState<string>(isActive !== undefined ? isActive.toString() : 'all');
   const [workflowIdInput, setWorkflowIdInput] = useState<string>(workflowId?.toString() || '');
@@ -564,7 +566,13 @@ export default function UserWorkflowsOverviewPage() {
               </div>
               
               {usersError && (
-                <p className="text-xs text-red-500 mt-1">Error: {usersError}</p>
+                <div className="mt-2">
+                  <NoAccess
+                    title="No access to Users"
+                    message={usersError}
+                    note="Please contact an administrator to obtain access."
+                  />
+                </div>
               )}
               {!usersLoading && !usersError && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -820,19 +828,27 @@ export default function UserWorkflowsOverviewPage() {
             </div>
 
             {/* Workflows Table */}
-            <div className="flex flex-col gap-4 md:gap-6">
-              <UserWorkflowsDataTable
-                data={userWorkflows || []}
-                total={total}
-                page={page}
-                limit={limit}
-                userId={selectedUserId}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-                onFiltersChange={handleFiltersChange}
-                isLoading={isLoading}
+            {error ? (
+              <NoAccess
+                title="No access to Workflows"
+                message={error}
+                note="Please contact an administrator to obtain access."
               />
-            </div>
+            ) : (
+              <div className="flex flex-col gap-4 md:gap-6">
+                <UserWorkflowsDataTable
+                  data={userWorkflows || []}
+                  total={total}
+                  page={page}
+                  limit={limit}
+                  userId={selectedUserId}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                  onFiltersChange={handleFiltersChange}
+                  isLoading={isLoading}
+                />
+              </div>
+            )}
           </>
         ) : (
           <Card className="mt-4">

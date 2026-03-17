@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUsersStore } from '@/store/useUsersStore';
+import { useModulesStore } from '@/store/useModulesStore';
 // Remove direct API call, use Next.js API route instead
 import { AdminDepositRequest } from '@/interface/Balance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { IconCoins, IconUser, IconMessage, IconTag, IconCheck, IconAlertTriangle
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getCookieValue } from '@/lib/auth';
+import { NoAccess } from '@/components/common/no-access';
 
 interface AdminBalanceDepositProps {
   onSuccess?: () => void;
@@ -21,12 +23,19 @@ interface AdminBalanceDepositProps {
 
 export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
   const { users, fetchUsers, isLoading: usersLoading } = useUsersStore();
+  const { modules, isLoading: modulesLoading, error: modulesError, hasPermission } = useModulesStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(9);
+
+  // Avoid fetching users (and spamming 403) if user has no access to Users module.
+  const canViewUsers =
+    !modulesError &&
+    !(modulesLoading && modules.length === 0) &&
+    hasPermission('users', 'can_view');
   
   const [formData, setFormData] = useState<AdminDepositRequest>({
     userId: 0,
@@ -64,8 +73,24 @@ export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
 
   // Load users on component mount
   useEffect(() => {
+    if (!canViewUsers) return;
     fetchUsers({ page: 1, limit: 100 });
-  }, [fetchUsers]);
+  }, [fetchUsers, canViewUsers]);
+  
+  // Reset to first page when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  if (!canViewUsers) {
+    return (
+      <NoAccess
+        title="No access to Users"
+        message="This operation requires access to the users list."
+        note="Please contact an administrator to obtain access."
+      />
+    );
+  }
 
   // Filter users based on search query
   const filteredUsers = users.filter(user => {
@@ -86,11 +111,6 @@ export function AdminBalanceDeposit({ onSuccess }: AdminBalanceDepositProps) {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-  // Reset to first page when search query changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);

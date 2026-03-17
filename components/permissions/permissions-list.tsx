@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePermissionsStore } from '@/store/usePermissionsStore'
+import { NoAccess } from '@/components/common/no-access'
 import { Permission } from '@/interface/Permission'
 import {
   Table,
@@ -54,7 +55,13 @@ export function PermissionsList({
   }
 
   if (error) {
-    return <div className="p-4 text-red-500">Error: {error}</div>
+    return (
+      <NoAccess
+        title="No access to Permissions"
+        message={error}
+        note="Please contact an administrator to obtain access."
+      />
+    )
   }
 
   return (

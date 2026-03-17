@@ -27,7 +27,15 @@ export const adminDeposit = async (
   const result: AdminDepositResponse = await response.json();
 
   if (!response.ok) {
-    throw new Error(result.message || 'Failed to process admin deposit');
+    return {
+      status: response.status,
+      message: result.message || 'Failed to process admin deposit',
+      data: {
+        transaction: {} as AdminDepositResponse['data']['transaction'],
+        targetUser: { id: 0, username: '', email: '' },
+        adminUser: { id: 0, username: '', email: '' }
+      }
+    };
   }
 
   return result;
@@ -36,43 +44,81 @@ export const adminDeposit = async (
 // Get all users with their balances
 export const getAllUsersWithBalances =
   async (): Promise<AdminUsersWithBalancesResponseDto> => {
-    const response = await fetchWithAuth(`${API_URL}/admin/balance/users`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
+    try {
+      const response = await fetchWithAuth(`${API_URL}/admin/balance/users`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result: AdminUsersWithBalancesResponseDto = await response.json();
+
+      if (!response.ok) {
+        return {
+          status: response.status,
+          data: [],
+          total_users: 0,
+          total_balances: 0,
+          message: result?.message || 'Failed to get users with balances'
+        };
       }
-    });
 
-    const result: AdminUsersWithBalancesResponseDto = await response.json();
+      return result;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching users with balances:', error);
+      }
 
-    if (!response.ok) {
-      throw new Error(result.message || 'Failed to get users with balances');
+      return {
+        status: 0,
+        data: [],
+        total_users: 0,
+        total_balances: 0,
+        message: error instanceof Error ? error.message : 'Failed to get users with balances'
+      };
     }
-
-    return result;
   };
 
 // Get user balances by userId
 export const getUserBalances = async (
   userId: number
 ): Promise<AdminUserBalancesResponseDto> => {
-  const response = await fetchWithAuth(
-    `${API_URL}/admin/balance/users/${userId}/balances`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
+  try {
+    const response = await fetchWithAuth(
+      `${API_URL}/admin/balance/users/${userId}/balances`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
+    );
+
+    const result: AdminUserBalancesResponseDto = await response.json();
+
+    if (!response.ok) {
+      return {
+        status: response.status,
+        user: null,
+        data: [],
+        message: result?.message || 'Failed to get user balances'
+      };
     }
-  );
 
-  const result: AdminUserBalancesResponseDto = await response.json();
+    return result;
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching user balances:', error);
+    }
 
-  if (!response.ok) {
-    throw new Error(result.message || 'Failed to get user balances');
+    return {
+      status: 0,
+      user: null,
+      data: [],
+      message: error instanceof Error ? error.message : 'Failed to get user balances'
+    };
   }
-
-  return result;
 };
 
 // Get user transactions with filters

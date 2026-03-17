@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select"
 import { UserWithBalancesDto } from "@/interface/Balance"
 import Link from "next/link"
+import { NoAccess } from "@/components/common/no-access"
 
 const columns: ColumnDef<UserWithBalancesDto>[] = [
   {
@@ -202,6 +203,7 @@ const columns: ColumnDef<UserWithBalancesDto>[] = [
 interface UsersBalancesDataTableProps {
   data: UserWithBalancesDto[]
   isLoading?: boolean
+  error?: string | null
   total?: number
   page?: number
   limit?: number
@@ -209,14 +211,15 @@ interface UsersBalancesDataTableProps {
   onPageSizeChange?: (pageSize: number) => void
 }
 
-export function UsersBalancesDataTable({
-  data,
+export function UsersBalancesDataTable({ 
+  data, 
   isLoading = false,
   total = 0,
   page = 1,
   limit = 20,
   onPageChange,
   onPageSizeChange,
+  error,
 }: UsersBalancesDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -251,6 +254,7 @@ export function UsersBalancesDataTable({
   })
 
   React.useEffect(() => {
+    if (!isLoading && error) return;
     const newPage = pagination.pageIndex + 1
     const newPageSize = pagination.pageSize
 
@@ -260,9 +264,19 @@ export function UsersBalancesDataTable({
     if (newPageSize !== limit && onPageSizeChange) {
       onPageSizeChange(newPageSize)
     }
-  }, [pagination, page, limit, onPageChange, onPageSizeChange])
+  }, [pagination, page, limit, onPageChange, onPageSizeChange, error, isLoading])
 
   const totalPages = Math.ceil(total / limit)
+
+  if (!isLoading && error) {
+    return (
+      <NoAccess
+        title="No access to Users with Balances"
+        message={error}
+        note="Please contact an administrator to obtain access."
+      />
+    )
+  }
 
   return (
     <div className="space-y-4">

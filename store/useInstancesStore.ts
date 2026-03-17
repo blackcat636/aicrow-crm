@@ -5,6 +5,7 @@ import {
   createInstance,
   updateInstance
 } from '@/lib/api/instances';
+import { useModulesStore } from '@/store/useModulesStore';
 
 interface InstancesStore {
   instances: Instance[];
@@ -45,6 +46,15 @@ export const useInstancesStore = create<InstancesStore>((set) => ({
           error: response.message,
           isLoading: false
         });
+
+        if (response.status === 403) {
+          // Keep menu/UI consistent: if backend denies, hide this sub-item.
+          useModulesStore.getState().overrideSubItemPermissions('automations', '/instances', {
+            can_view: false,
+            can_edit: false,
+            can_delete: false
+          });
+        }
       }
     } catch (error) {
       set({

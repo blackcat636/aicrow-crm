@@ -1,12 +1,17 @@
 export const runtime = 'edge';
 import { GalleryVerticalEnd } from "lucide-react"
 import Image from "next/image"
+import { Suspense } from "react"
 
 import { LoginForm } from "@/components/auth/login-form"
+import { LoginRedirect } from "@/components/auth/login-redirect"
 
 export default function LoginPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2 relative overflow-hidden">
+      <Suspense fallback={null}>
+        <LoginRedirect />
+      </Suspense>
       {/* Animated background gradient */}
       <div className="absolute inset-0 bg-gradient-primary animate-gradient opacity-10 pointer-events-none" />
       

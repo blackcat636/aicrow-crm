@@ -10,7 +10,11 @@
 
 import { getCookieValue, setTokens, removeTokens } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
+// Remove trailing slash to avoid double slashes in requests
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010').replace(
+  /\/+$/,
+  ''
+);
 
 // Lock to prevent concurrent refresh requests
 let refreshInProgress = false;
@@ -65,13 +69,14 @@ export const refreshAccessToken = async (): Promise<boolean> => {
   refreshInProgress = true;
   refreshPromise = (async () => {
     try {
+      // Swagger expects: header x-device-id + body { refreshToken }
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-device-id': deviceId
         },
-        body: JSON.stringify({ refreshToken, deviceId })
+        body: JSON.stringify({ refreshToken })
       });
 
     // Handle non-OK responses
@@ -80,9 +85,6 @@ export const refreshAccessToken = async (): Promise<boolean> => {
       if (response.status === 401) {
         // Clear invalid tokens
         removeTokens();
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('🔐 Refresh token is invalid or expired. User needs to login again.');
-        }
         return false;
       }
       
@@ -136,11 +138,11 @@ export const refreshAccessToken = async (): Promise<boolean> => {
  */
 export const ensureValidToken = async (): Promise<boolean> => {
   const token = getCookieValue('access_token');
+  const refreshToken = getCookieValue('refresh_token');
+  const deviceId = getCookieValue('device_id');
 
   if (!token) {
     // Якщо токен відсутній, спробуємо оновити через refresh token
-    const refreshToken = getCookieValue('refresh_token');
-    const deviceId = getCookieValue('device_id');
     if (refreshToken && deviceId) {
       return await refreshAccessToken();
     }
@@ -150,8 +152,6 @@ export const ensureValidToken = async (): Promise<boolean> => {
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) {
     // Якщо токен невалідний, спробуємо оновити через refresh token
-    const refreshToken = getCookieValue('refresh_token');
-    const deviceId = getCookieValue('device_id');
     if (refreshToken && deviceId) {
       return await refreshAccessToken();
     }

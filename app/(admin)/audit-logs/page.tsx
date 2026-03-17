@@ -427,9 +427,6 @@ export default function AuditLogsPage() {
     setShowDetailDialog(true);
   };
 
-  if (isLoading && auditLogs.length === 0) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 px-6 pb-6">
@@ -629,6 +626,7 @@ export default function AuditLogsPage() {
             onPageSizeChange={handlePageSizeChange}
             isLoading={isLoading}
             onViewDetails={handleViewDetails}
+            error={error}
           />
         </div>
 

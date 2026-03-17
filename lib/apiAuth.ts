@@ -11,7 +11,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { setTokens, removeTokens, getCookieValue } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010';
+// Remove trailing slash to avoid double slashes in requests
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010').replace(
+  /\/+$/,
+  ''
+);
 
 /**
  * 🆔 Генерує та зберігає унікальний Device ID
@@ -98,10 +102,11 @@ export const refreshToken = async () => {
   };
 
   try {
+    // Swagger expects: header x-device-id + body { refreshToken }
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ refreshToken, deviceId })
+      body: JSON.stringify({ refreshToken })
     });
 
     const data = await response.json();

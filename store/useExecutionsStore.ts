@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Execution } from '@/interface/Execution';
 import { getAllExecutions } from '@/lib/api/executions';
+import { useModulesStore } from '@/store/useModulesStore';
 
 interface ExecutionsStore {
   executions: Execution[];
@@ -73,6 +74,13 @@ export const useExecutionsStore = create<ExecutionsStore>((set, get) => ({
           error: response.message || 'Failed to fetch executions',
           isLoading: false
         });
+        if (response.status === 403) {
+          useModulesStore.getState().overrideSubItemPermissions('automations', '/executions', {
+            can_view: false,
+            can_edit: false,
+            can_delete: false
+          });
+        }
       }
     } catch (error) {
       set({

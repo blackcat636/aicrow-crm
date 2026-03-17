@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getAllUsers, UserFilters } from '@/lib/api/users';
 import { User } from '@/interface/User';
+import { useModulesStore } from '@/store/useModulesStore';
 
 interface UsersStore {
   users: User[];
@@ -24,6 +25,27 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   filters: {},
 
   fetchUsers: async (filters: UserFilters = {}) => {
+    // Gate network calls behind loaded permissions to avoid "fetch then deny" flicker
+    // and repeated 403 spam when user lacks access.
+    let modulesState = useModulesStore.getState();
+    if (!modulesState.permissionsReady) {
+      await modulesState.fetchModules();
+      modulesState = useModulesStore.getState();
+      if (!modulesState.permissionsReady) {
+        return;
+      }
+    }
+
+    if (!modulesState.hasPermission('users', 'can_view')) {
+      set({
+        isLoading: false,
+        users: [],
+        total: 0,
+        error: "You don't have permission to view users.",
+      });
+      return;
+    }
+
     // Use current state as defaults if params not provided
     const currentPage = filters.page ?? get().page;
     const currentLimit = filters.limit ?? get().limit;
@@ -75,10 +97,27 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
           filters: filterState
         });
       } else {
-        set({ error: response.message || 'Error loading users' });
+        const friendlyMessage =
+          response.status === 403
+            ? "You don't have permission to view users."
+            : response.message || 'Error loading users';
+        set({ error: friendlyMessage });
+
+        if (response.status === 403) {
+          // Keep menu/UI consistent: if backend denies, hide the module actions.
+          useModulesStore
+            .getState()
+            .overrideModulePermissions('users', {
+              can_view: false,
+              can_edit: false,
+              can_delete: false
+            });
+        }
       }
     } catch (error) {
-      set({ error: 'Error loading users' });
+      const friendlyMessage =
+        error instanceof Error ? error.message : 'Error loading users';
+      set({ error: friendlyMessage });
     } finally {
       set({ isLoading: false });
     }

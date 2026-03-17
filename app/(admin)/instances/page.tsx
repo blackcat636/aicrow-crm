@@ -6,8 +6,8 @@ import { useEffect } from 'react'
 import { useInstancesStore } from '@/store/useInstancesStore'
 import { InstancesDataTable } from '@/components/instances/instances-data-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { IconServer, IconCircleCheckFilled, IconCircleXFilled } from '@tabler/icons-react'
+import { NoAccess } from '@/components/common/no-access'
 
 export default function InstancesPage() {
   const { 
@@ -104,15 +104,11 @@ export default function InstancesPage() {
           </CardHeader>
           <CardContent>
             {error ? (
-              <div className="text-center py-8">
-                <p className="text-destructive mb-4">{error}</p>
-                <Button 
-                  onClick={() => fetchInstances()}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                >
-                  Retry
-                </Button>
-              </div>
+              <NoAccess
+                title="No access to Instances"
+                message={error}
+                note="Please contact an administrator to obtain access."
+              />
             ) : (
               <InstancesDataTable 
                 data={instances} 

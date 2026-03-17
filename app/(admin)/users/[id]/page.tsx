@@ -172,6 +172,7 @@ export default function UserDetailPage() {
   const {
     auditLogs,
     isLoading: isLoadingLogs,
+    error: auditLogsError,
     total: totalLogs,
     page: logsPage,
     limit: logsLimit,
@@ -280,17 +281,6 @@ export default function UserDetailPage() {
           resourceFilters: null,
           expiresAt: null
         };
-      });
-      
-      // Log for debugging
-      console.log('🔍 Extracted user roles from API:', {
-        totalPermissions: userRolesData.length,
-        uniqueRoleNames: Array.from(roleMap.keys()),
-        extractedRoles: uniqueUserRoles.map(r => ({ name: r.role, id: r.roleId })),
-        rolesInStore: roles.length,
-        rolesWithoutIdInStore: Array.from(roleMap.values())
-          .filter(r => !roles.find(rs => rs.name === r.roleName))
-          .map(r => r.roleName)
       });
       
       setUserRoles(uniqueUserRoles);
@@ -1316,6 +1306,7 @@ export default function UserDetailPage() {
               onPageChange={(newPage) => applyLogsFilters({ page: newPage, limit: logsLimit })}
               onPageSizeChange={(newLimit) => applyLogsFilters({ page: 1, limit: newLimit })}
               isLoading={isLoadingLogs}
+              error={auditLogsError}
               onViewDetails={(log) => {
                 setSelectedLog(log);
                 setShowDetailDialog(true);
@@ -1385,16 +1376,6 @@ export default function UserDetailPage() {
                     });
 
                     const uniqueRoles = Array.from(roleMap.values());
-                    
-                    // Log final result: ролі та API запит
-                    console.log('👤 User Roles:', {
-                      count: uniqueRoles.length,
-                      roles: uniqueRoles.map(r => ({ name: r.roleName, id: r.roleId })),
-                      apiRequests: [
-                        `GET /api/admin/permissions/users/${userId}/roles`,
-                        `GET /api/admin/permissions/roles`
-                      ]
-                    });
 
                     if (uniqueRoles.length === 0) {
                       return (
@@ -1586,30 +1567,6 @@ export default function UserDetailPage() {
                         Loading roles...
                       </div>
                     ) : (() => {
-                        // Debug: log current state
-                        console.log('🔍 Filtering roles for assignment:', {
-                          allRoles: roles.map(r => ({ id: r.id, name: r.name })),
-                          userRoles: userRoles.map(r => ({ roleId: r.roleId, role: r.role })),
-                          availableRoles: roles.filter((role) => {
-                            const isAssigned = userRoles.some((userRole) => {
-                              // Check by roleId (most reliable)
-                              if (userRole.roleId === role.id) {
-                                return true;
-                              }
-                              // Check by role name if role is a string
-                              if (typeof userRole.role === 'string' && userRole.role === role.name) {
-                                return true;
-                              }
-                              // Check by role object id
-                              if (typeof userRole.role === 'object' && userRole.role?.id === role.id) {
-                                return true;
-                              }
-                              return false;
-                            });
-                            return !isAssigned;
-                          }).map(r => ({ id: r.id, name: r.name }))
-                        });
-                        
                         return roles.filter((role) => {
                           // Filter out roles that are already assigned to the user
                           // userRoles now contains UserRole[] with roleId and role (string or object)

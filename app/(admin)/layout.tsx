@@ -1,6 +1,9 @@
 "use client"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
+import { LastPathTracker } from "@/components/auth/last-path-tracker"
+import { ModuleRouteGuard } from "@/components/auth/module-route-guard"
+import { Suspense } from "react"
 import {
   SidebarInset,
   SidebarProvider,
@@ -19,13 +22,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         } as React.CSSProperties
       }
     >
+      <Suspense fallback={null}>
+        <LastPathTracker />
+      </Suspense>
       <AppSidebar variant="inset" />
       <SidebarInset className="overflow-x-hidden">
         <SiteHeader />
         <div className="flex flex-1 flex-col min-h-0">
           <div className="@container/main flex flex-1 flex-col gap-2 px-2 sm:px-4 md:ml-4 pb-4 overflow-y-auto">
             <div className="animate-fade-in-up">
-              {children}
+              <ModuleRouteGuard redirectOnDeny={false}>
+                {children}
+              </ModuleRouteGuard>
             </div>
           </div>
         </div>

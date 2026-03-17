@@ -4,10 +4,16 @@ export interface ModulePermission {
   can_delete: boolean;
 }
 
+export interface PersistedModuleOverrides {
+  modules: Record<string, Partial<ModulePermission>>;
+  subItems: Record<string, Record<string, Partial<ModulePermission>>>;
+}
+
 export interface ModuleSubItem {
   title: string;
   url: string;
   icon: string;
+  permissions?: ModulePermission;
 }
 
 export interface Module {
@@ -31,9 +37,22 @@ export interface ModulesResponse {
 export interface ModuleStore {
   modules: Module[];
   isLoading: boolean;
+  permissionsReady: boolean;
   error: string | null;
   lastFetched: number | null;
+  overrideUserId: number | null;
+  _persistedOverrides: PersistedModuleOverrides;
   fetchModules: () => Promise<void>;
+  setOverrideUser: (userId: number | string | null) => void;
+  overrideModulePermissions: (
+    moduleKey: string,
+    patch: Partial<ModulePermission>
+  ) => void;
+  overrideSubItemPermissions: (
+    moduleKey: string,
+    subItemUrl: string,
+    patch: Partial<ModulePermission>
+  ) => void;
   getModuleByKey: (key: string) => Module | undefined;
   getModuleByRoute: (route: string) => Module | undefined;
   hasPermission: (

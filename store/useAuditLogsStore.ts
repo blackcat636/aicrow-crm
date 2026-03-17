@@ -153,15 +153,26 @@ export const useAuditLogsStore = create<AuditLogsStore>((set, get) => ({
           filters: filterState,
         });
       } else {
-        console.error('❌ [store.fetchAuditLogs] API returned error:', {
-          status: response.status,
-          message: response.message,
-        });
-        set({ error: response.message || 'Error loading audit logs' });
+        const friendlyMessage =
+          response.status === 403
+            ? 'You do not have permission to view audit logs.'
+            : response.message || 'Failed to load audit logs.';
+
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('❌ [store.fetchAuditLogs] API returned error:', {
+            status: response.status,
+            message: response.message,
+          });
+        }
+        set({ error: friendlyMessage });
       }
     } catch (error) {
-      console.error('❌ [store.fetchAuditLogs] Exception:', error);
-      set({ error: error instanceof Error ? error.message : 'Error loading audit logs' });
+      const fallbackMessage =
+        error instanceof Error ? error.message : 'Failed to load audit logs.';
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('❌ [store.fetchAuditLogs] Exception:', error);
+      }
+      set({ error: fallbackMessage });
     } finally {
       set({ isLoading: false });
     }
@@ -241,15 +252,26 @@ export const useAuditLogsStore = create<AuditLogsStore>((set, get) => ({
           // filters: filterState,
         });
       } else {
-        console.error('❌ [store.fetchAuditLogsByUserId] API returned error:', {
-          status: response.status,
-          message: response.message,
-        });
-        set({ error: response.message || 'Error loading audit logs' });
+        const friendlyMessage =
+          response.status === 403
+            ? 'You do not have permission to view audit logs.'
+            : response.message || 'Failed to load audit logs.';
+
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('❌ [store.fetchAuditLogsByUserId] API returned error:', {
+            status: response.status,
+            message: response.message,
+          });
+        }
+        set({ error: friendlyMessage });
       }
     } catch (error) {
-      console.error('❌ [store.fetchAuditLogsByUserId] Exception:', error);
-      set({ error: error instanceof Error ? error.message : 'Error loading audit logs' });
+      const fallbackMessage =
+        error instanceof Error ? error.message : 'Failed to load audit logs.';
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('❌ [store.fetchAuditLogsByUserId] Exception:', error);
+      }
+      set({ error: fallbackMessage });
     } finally {
       set({ isLoading: false });
     }

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRolesStore } from '@/store/useRolesStore'
+import { NoAccess } from '@/components/common/no-access'
 import { Role } from '@/interface/Role'
 import {
   Table,
@@ -54,7 +55,13 @@ export function RolesList({
   }
 
   if (error) {
-    return <div className="p-4 text-red-500">Error: {error}</div>
+    return (
+      <NoAccess
+        title="No access to Roles"
+        message={error}
+        note="Please contact an administrator to obtain access."
+      />
+    )
   }
 
   return (
