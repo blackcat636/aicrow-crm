@@ -407,34 +407,6 @@ export function CreateEditPlanDialog({
             </div>
           </div>
 
-          <Separator />
-
-          {/* Limits & Features Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Limits & Features</h3>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="tokensIncluded">
-                Tokens Included <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="tokensIncluded"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={form.tokensIncluded ?? 0}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    tokensIncluded: parseInt(e.target.value) || 0,
-                  }))
-                }
-              />
-              {errors.tokensIncluded ? (
-                <p className="text-xs text-red-500">{errors.tokensIncluded}</p>
-              ) : null}
-            </div>
-          </div>
         </div>
 
         <DialogFooter>
