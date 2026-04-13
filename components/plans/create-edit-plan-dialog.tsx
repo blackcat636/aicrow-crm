@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -24,22 +33,78 @@ import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { createPlan, updatePlan, getPlanById, getPlanFeatures } from "@/lib/api/subscription-plans"
 import { useSubscriptionPlansStore } from "@/store/useSubscriptionPlansStore"
-import { SubscriptionPlan } from "@/interface/SubscriptionPlan"
+import {
+  SubscriptionPlan,
+  UpdatePlanRequest,
+  type CreatePlanRequest,
+} from "@/interface/SubscriptionPlan"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { IconAlertTriangle } from "@tabler/icons-react"
+import { TranslatableTextField } from "@/components/translatable"
+import { ADMIN_DEFAULT_LOCALE, ADMIN_LOCALES } from "@/lib/config/admin-locales"
+import {
+  buildNullableDescriptionDeltaForPut,
+  buildTranslatableFieldDeltaForPut,
+  emptyTranslatableMap,
+  isDefaultLocaleFilled,
+  normalizeFromApi,
+  serializeForApi,
+  serializeNullableForApi,
+} from "@/lib/translatable"
 
 type Period = "monthly" | "yearly" | "one_time"
 
 interface FormData {
-  name: string
-  description: string
+  nameByLocale: Record<string, string>
+  descriptionByLocale: Record<string, string>
   price: number
   period: Period
   trialDays: number
   tokensIncluded: number
   isActive: boolean
   isDefault: boolean
+}
+
+type FormErrors = Partial<{
+  name: string
+  description: string
+  price: string
+  period: string
+  tokensIncluded: string
+  trialDays: string
+}>
+
+function cloneFormData(f: FormData): FormData {
+  return {
+    nameByLocale: { ...f.nameByLocale },
+    descriptionByLocale: { ...f.descriptionByLocale },
+    price: f.price,
+    period: f.period,
+    trialDays: f.trialDays,
+    tokensIncluded: f.tokensIncluded,
+    isActive: f.isActive,
+    isDefault: f.isDefault,
+  }
+}
+
+function formsEqual(a: FormData, b: FormData): boolean {
+  for (const loc of ADMIN_LOCALES) {
+    if ((a.nameByLocale[loc] ?? "") !== (b.nameByLocale[loc] ?? "")) {
+      return false
+    }
+    if ((a.descriptionByLocale[loc] ?? "") !== (b.descriptionByLocale[loc] ?? "")) {
+      return false
+    }
+  }
+  return (
+    a.price === b.price &&
+    a.period === b.period &&
+    a.trialDays === b.trialDays &&
+    a.tokensIncluded === b.tokensIncluded &&
+    a.isActive === b.isActive &&
+    a.isDefault === b.isDefault
+  )
 }
 
 interface CreateEditPlanDialogProps {
@@ -66,8 +131,8 @@ export function CreateEditPlanDialog({
   const isDuplicating = !!plan && plan.id === 0 && !!originalPlanIdForDuplication
 
   const [form, setForm] = useState<FormData>({
-    name: "",
-    description: "",
+    nameByLocale: emptyTranslatableMap(ADMIN_LOCALES),
+    descriptionByLocale: emptyTranslatableMap(ADMIN_LOCALES),
     price: 0,
     period: "monthly",
     trialDays: 0,
@@ -76,23 +141,43 @@ export function CreateEditPlanDialog({
     isDefault: false,
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>(
-    {}
+  const [errors, setErrors] = useState<FormErrors>({})
+
+  /** Snapshot of translatable fields when the form was last loaded (for edit PUT deltas). */
+  const initialNameByLocaleRef = useRef<Record<string, string>>(
+    emptyTranslatableMap(ADMIN_LOCALES)
   )
+  const initialDescriptionByLocaleRef = useRef<Record<string, string>>(
+    emptyTranslatableMap(ADMIN_LOCALES)
+  )
+
+  /** Last loaded snapshot for dirty detection (discard confirmation). */
+  const baselineFormRef = useRef<FormData | null>(null)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setShowDiscardConfirm(false)
+    }
+  }, [open])
 
   // Load full plan data when editing or duplicating (list may not include tokensIncluded; also check features for token_limit)
   useEffect(() => {
     if (open && !plan) {
-      setForm({
-        name: "",
-        description: "",
+      initialNameByLocaleRef.current = emptyTranslatableMap(ADMIN_LOCALES)
+      initialDescriptionByLocaleRef.current = emptyTranslatableMap(ADMIN_LOCALES)
+      const next: FormData = {
+        nameByLocale: emptyTranslatableMap(ADMIN_LOCALES),
+        descriptionByLocale: emptyTranslatableMap(ADMIN_LOCALES),
         price: 0,
         period: "monthly",
         trialDays: 0,
         tokensIncluded: 0,
         isActive: true,
         isDefault: false,
-      })
+      }
+      baselineFormRef.current = cloneFormData(next)
+      setForm(next)
       setShowDefaultWarning(false)
       return
     }
@@ -100,16 +185,30 @@ export function CreateEditPlanDialog({
 
     const planIdToLoad = plan.id > 0 ? plan.id : (originalPlanIdForDuplication ?? null)
     if (!planIdToLoad) {
-      setForm({
-        name: plan.name ?? "",
-        description: plan.description ?? "",
+      const nameByLocale = normalizeFromApi(
+        plan.name,
+        ADMIN_DEFAULT_LOCALE,
+        ADMIN_LOCALES
+      )
+      const descriptionByLocale = normalizeFromApi(
+        plan.description ?? null,
+        ADMIN_DEFAULT_LOCALE,
+        ADMIN_LOCALES
+      )
+      initialNameByLocaleRef.current = { ...nameByLocale }
+      initialDescriptionByLocaleRef.current = { ...descriptionByLocale }
+      const next: FormData = {
+        nameByLocale,
+        descriptionByLocale,
         price: Number(plan.price) || 0,
         period: (plan.period ?? "monthly") as Period,
         trialDays: Number(plan.trialDays) || 0,
         tokensIncluded: Number(plan.tokensIncluded) || 0,
         isActive: plan.isActive ?? true,
         isDefault: plan.isDefault ?? false,
-      })
+      }
+      baselineFormRef.current = cloneFormData(next)
+      setForm(next)
       return
     }
 
@@ -119,16 +218,30 @@ export function CreateEditPlanDialog({
         if (res.status !== 200 && res.status !== 0) return
         const p = res.data
         const tokensIncluded = Number(p.tokensIncluded) || 0
-        setForm({
-          name: p.name ?? "",
-          description: p.description ?? "",
+        const nameByLocale = normalizeFromApi(
+          p.name,
+          ADMIN_DEFAULT_LOCALE,
+          ADMIN_LOCALES
+        )
+        const descriptionByLocale = normalizeFromApi(
+          p.description ?? null,
+          ADMIN_DEFAULT_LOCALE,
+          ADMIN_LOCALES
+        )
+        initialNameByLocaleRef.current = { ...nameByLocale }
+        initialDescriptionByLocaleRef.current = { ...descriptionByLocale }
+        const next: FormData = {
+          nameByLocale,
+          descriptionByLocale,
           price: Number(p.price) || 0,
           period: (p.period ?? "monthly") as Period,
           trialDays: Number(p.trialDays) || 0,
           tokensIncluded,
           isActive: p.isActive ?? true,
           isDefault: p.isDefault ?? false,
-        })
+        }
+        baselineFormRef.current = cloneFormData(next)
+        setForm(next)
         // If plan didn't have tokensIncluded, try to get it from features (monthly_tokens / token_limit)
         if (tokensIncluded === 0) {
           getPlanFeatures(planIdToLoad).then((featuresRes) => {
@@ -139,22 +252,40 @@ export function CreateEditPlanDialog({
             )
             const limit = tokenFeature?.featureValue?.limit
             if (typeof limit === "number" && limit >= 0) {
-              setForm((prev) => ({ ...prev, tokensIncluded: limit }))
+              setForm((prev) => {
+                const merged: FormData = { ...prev, tokensIncluded: limit }
+                baselineFormRef.current = cloneFormData(merged)
+                return merged
+              })
             }
           }).catch(() => {})
         }
       })
       .catch(() => {
-        setForm({
-          name: plan.name ?? "",
-          description: plan.description ?? "",
+        const nameByLocale = normalizeFromApi(
+          plan.name,
+          ADMIN_DEFAULT_LOCALE,
+          ADMIN_LOCALES
+        )
+        const descriptionByLocale = normalizeFromApi(
+          plan.description ?? null,
+          ADMIN_DEFAULT_LOCALE,
+          ADMIN_LOCALES
+        )
+        initialNameByLocaleRef.current = { ...nameByLocale }
+        initialDescriptionByLocaleRef.current = { ...descriptionByLocale }
+        const next: FormData = {
+          nameByLocale,
+          descriptionByLocale,
           price: Number(plan.price) || 0,
           period: (plan.period ?? "monthly") as Period,
           trialDays: Number(plan.trialDays) || 0,
           tokensIncluded: Number(plan.tokensIncluded) || 0,
           isActive: plan.isActive ?? true,
           isDefault: plan.isDefault ?? false,
-        })
+        }
+        baselineFormRef.current = cloneFormData(next)
+        setForm(next)
       })
   }, [open, plan, originalPlanIdForDuplication])
 
@@ -168,11 +299,40 @@ export function CreateEditPlanDialog({
     }
   }, [form.isDefault, plans, isEditMode, plan])
 
+  const isDirty = useMemo(() => {
+    const b = baselineFormRef.current
+    if (!b) return false
+    return !formsEqual(form, b)
+  }, [form])
+
+  const handleDialogOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        onOpenChange(true)
+        return
+      }
+      if (isSubmitting) {
+        return
+      }
+      if (isDirty) {
+        setShowDiscardConfirm(true)
+        return
+      }
+      onOpenChange(false)
+    },
+    [isDirty, isSubmitting, onOpenChange]
+  )
+
+  const confirmDiscardAndClose = useCallback(() => {
+    setShowDiscardConfirm(false)
+    onOpenChange(false)
+  }, [onOpenChange])
+
   // Basic client-side validation
   const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof FormData, string>> = {}
+    const newErrors: FormErrors = {}
 
-    if (!form.name || form.name.trim().length === 0) {
+    if (!isDefaultLocaleFilled(form.nameByLocale, ADMIN_DEFAULT_LOCALE)) {
       newErrors.name = "Name is required"
     }
     if (form.price === undefined || form.price < 0) {
@@ -199,24 +359,53 @@ export function CreateEditPlanDialog({
       setIsSubmitting(true)
 
       // Step 1: Create or update the plan
-      const planData = {
-        name: form.name.trim(),
-        description: form.description.trim() || null,
-        price: Number(form.price),
-        period: form.period,
-        trialDays: Number(form.trialDays),
-        tokensIncluded: Number(form.tokensIncluded),
-        isActive: form.isActive,
-        isDefault: form.isDefault,
-      }
-
       if (isEditMode && plan) {
-        const response = await updatePlan(plan.id, planData)
+        const updateBody: UpdatePlanRequest = {
+          price: Number(form.price),
+          period: form.period,
+          trialDays: Number(form.trialDays),
+          isActive: form.isActive,
+          isDefault: form.isDefault,
+        }
+        const nameDelta = buildTranslatableFieldDeltaForPut(
+          form.nameByLocale,
+          initialNameByLocaleRef.current,
+          ADMIN_LOCALES
+        )
+        if (nameDelta !== undefined) {
+          updateBody.name = nameDelta
+        }
+        const descDelta = buildNullableDescriptionDeltaForPut(
+          form.descriptionByLocale,
+          initialDescriptionByLocaleRef.current,
+          ADMIN_LOCALES
+        )
+        if (descDelta === undefined) {
+          // omit description
+        } else if (descDelta === null) {
+          updateBody.description = null
+        } else {
+          updateBody.description = descDelta
+        }
+
+        const response = await updatePlan(plan.id, updateBody)
         if (response.status !== 200) {
           throw new Error(response.message || "Failed to update plan")
         }
       } else {
-        const response = await createPlan(planData)
+        const createBody: CreatePlanRequest = {
+          name: serializeForApi(form.nameByLocale, ADMIN_DEFAULT_LOCALE),
+          description: serializeNullableForApi(
+            form.descriptionByLocale,
+            ADMIN_DEFAULT_LOCALE
+          ),
+          price: Number(form.price),
+          period: form.period,
+          trialDays: Number(form.trialDays),
+          isActive: form.isActive,
+          isDefault: form.isDefault,
+        }
+        const response = await createPlan(createBody)
         if (response.status !== 200 && response.status !== 201) {
           throw new Error(response.message || "Failed to create plan")
         }
@@ -243,7 +432,8 @@ export function CreateEditPlanDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -267,35 +457,34 @@ export function CreateEditPlanDialog({
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Info</h3>
             
-            <div className="grid gap-2">
-              <Label htmlFor="name">
-                Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="name"
-                placeholder="Plan name"
-                value={form.name ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-              {errors.name ? (
-                <p className="text-xs text-red-500">{errors.name}</p>
-              ) : null}
-            </div>
+            <TranslatableTextField
+              id="plan-name"
+              label="Name"
+              locales={ADMIN_LOCALES}
+              defaultLocale={ADMIN_DEFAULT_LOCALE}
+              value={form.nameByLocale}
+              onChange={(nameByLocale) =>
+                setForm((f) => ({ ...f, nameByLocale }))
+              }
+              variant="primaryWithModal"
+              required
+              error={errors.name}
+              placeholder="Plan name"
+            />
 
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Plan description and benefits"
-                value={form.description ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-                rows={3}
-              />
-            </div>
+            <TranslatableTextField
+              id="plan-description"
+              label="Description"
+              locales={ADMIN_LOCALES}
+              defaultLocale={ADMIN_DEFAULT_LOCALE}
+              value={form.descriptionByLocale}
+              onChange={(descriptionByLocale) =>
+                setForm((f) => ({ ...f, descriptionByLocale }))
+              }
+              variant="primaryWithModal"
+              multiline
+              placeholder="Plan description and benefits"
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center justify-between rounded-md border p-3">
@@ -412,7 +601,7 @@ export function CreateEditPlanDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleDialogOpenChange(false)}
             disabled={isSubmitting}
           >
             Cancel
@@ -431,5 +620,32 @@ export function CreateEditPlanDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/20">
+            <IconAlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+          </div>
+          <AlertDialogTitle className="text-center text-xl font-semibold">
+            Close without saving?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-center">
+            You have unsaved changes. Are you sure you want to close? Your edits
+            will be lost.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:gap-0">
+          <AlertDialogCancel className="w-full sm:w-auto">Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmDiscardAndClose}
+            className="w-full bg-orange-600 hover:bg-orange-700 focus:ring-orange-500 sm:w-auto"
+          >
+            Discard changes
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

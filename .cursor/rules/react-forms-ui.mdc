@@ -1,0 +1,14 @@
+---
+description: React-компоненти, форми, таблиці та UI-шари
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# React / UI
+
+- **Клієнт**: додавай `"use client"` лише для компонентів з хуками, станом або браузерними API.
+- **UI**: перевикористовуй `components/ui/*`; для класів використовуй `cn()` з `@/lib/utils`.
+- **Нові форми**: віддавай перевагу `react-hook-form` + Zod resolver; типи з `z.infer<typeof schema>`.
+- **Дані**: клієнтські запити через існуючі хелпери (`fetchWithAuth`, модулі в `lib/api/`); після мутацій оновлюй Zustand або роби refetch патерном, який уже є в фічі.
+- **Таблиці**: `@tanstack/react-table` у стилі наявних `*-data-table.tsx`.
+- **Повідомлення**: `sonner` (`toast`) там, де вже використано в схожих діалогах.

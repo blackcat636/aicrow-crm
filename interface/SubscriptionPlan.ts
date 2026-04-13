@@ -1,7 +1,15 @@
+import type { TranslatableApiValue } from '@/lib/translatable';
+
+/** API may return a plain string (default locale) or per-locale map. */
+export type PlanTranslatableField = Exclude<
+  TranslatableApiValue,
+  null | undefined
+>;
+
 export interface SubscriptionPlan {
   id: number;
-  name: string;
-  description: string | null;
+  name: PlanTranslatableField;
+  description: PlanTranslatableField | null;
   price: number;
   period: 'monthly' | 'yearly' | 'one_time';
   trialDays: number;
@@ -45,23 +53,21 @@ export interface PlanFeaturesApiResponse {
 }
 
 export interface CreatePlanRequest {
-  name: string;
-  description?: string | null;
+  name: string | Record<string, string>;
+  description?: string | Record<string, string> | null;
   price: number;
   period: 'monthly' | 'yearly' | 'one_time';
   trialDays?: number;
-  tokensIncluded: number;
   isActive?: boolean;
   isDefault?: boolean;
 }
 
 export interface UpdatePlanRequest {
-  name?: string;
-  description?: string | null;
+  name?: string | Record<string, string>;
+  description?: string | Record<string, string> | null;
   price?: number;
   period?: 'monthly' | 'yearly' | 'one_time';
   trialDays?: number;
-  tokensIncluded?: number;
   isActive?: boolean;
   isDefault?: boolean;
 }

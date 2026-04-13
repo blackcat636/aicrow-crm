@@ -58,6 +58,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SubscriptionPlan } from "@/interface/SubscriptionPlan"
+import { ADMIN_DEFAULT_LOCALE } from "@/lib/config/admin-locales"
+import { pickDisplayString } from "@/lib/translatable"
 
 // Format currency
 const formatCurrency = (price: number): string => {
@@ -105,7 +107,8 @@ const columns: ColumnDef<SubscriptionPlan>[] = [
     ),
   },
   {
-    accessorKey: "name",
+    id: "name",
+    accessorFn: (row) => pickDisplayString(row.name, ADMIN_DEFAULT_LOCALE),
     header: ({ column }) => {
       return (
         <Button
@@ -126,7 +129,9 @@ const columns: ColumnDef<SubscriptionPlan>[] = [
     },
     cell: ({ row }) => (
       <div className="w-48">
-        <span className="font-medium text-foreground">{row.original.name}</span>
+        <span className="font-medium text-foreground">
+          {pickDisplayString(row.original.name, ADMIN_DEFAULT_LOCALE)}
+        </span>
       </div>
     ),
     enableHiding: false,

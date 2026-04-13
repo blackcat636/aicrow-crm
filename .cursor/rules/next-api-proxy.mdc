@@ -1,0 +1,14 @@
+---
+description: Проксі Route Handlers у app/api до зовнішнього API
+globs: app/api/**/*.ts,app/admin/**/*.ts
+alwaysApply: false
+---
+
+# Next.js Route Handlers (proxy)
+
+- Узгоджуйся з існуючими handler-ами: `NextRequest` / `NextResponse`, `try/catch`, повернення JSON з помилками.
+- База API: `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'`, нормалізуй trailing slash (`.replace(/\/+$/, '')`) як у проєкті.
+- Авторизація: читай `authorization` **або** cookie `access_token` і форвардь на бекенд як `Bearer`.
+- Якщо в сусідніх route використано `export const runtime = 'edge'`, зберігай той самий runtime для нових проксі в тій же зоні, якщо немає причини змінювати.
+- Не вигадуй ендпоінти бекенду: дзеркалюй шляхи й контракти з існуючих `lib/api/*.ts` або живих route.
+- Помилки мережі / не-OK від бекенду: прокидай статус і тіло змістовно, не голі `500` без контексту.

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/eslint-fix-after-edit.cjs",
+        "matcher": "Write"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/guard-destructive-shell.cjs",
+        "matcher": "rm |dd |mkfs|shred"
+      }
+    ]
+  }
+}

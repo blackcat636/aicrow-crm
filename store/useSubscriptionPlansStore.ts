@@ -48,6 +48,10 @@ export const useSubscriptionPlansStore = create<SubscriptionPlansStore>((set, ge
     // Remove undefined values to clear filters
     if (mergedFilters.isActive === undefined) delete mergedFilters.isActive;
 
+    if (mergedFilters.includeInactive === undefined) {
+      mergedFilters.includeInactive = true;
+    }
+
     // Enforce API limit of 100
     const validLimit = Math.min(mergedFilters.limit || 10, 100);
     if ((mergedFilters.limit || 10) > 100) {

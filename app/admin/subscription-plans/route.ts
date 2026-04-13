@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import {
+  hasTranslatableContent,
+  trimNullableTranslatableForBackend,
+  trimTranslatableForBackend
+} from '@/lib/translatable';
+
 export const runtime = 'edge';
 
-// GET /admin/subscription-plans - Get all subscription plans
+// Next route: GET/POST /admin/subscription-plans → backend /admin/subscription-plans
 export async function GET(request: NextRequest) {
   try {
-    // Get authorization token from request
     const authHeader =
       request.headers.get('authorization') ||
       (request.cookies.get('access_token')?.value
         ? `Bearer ${request.cookies.get('access_token')?.value}`
         : '');
 
-    // Forward request to backend API
     const API_URL = (
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
-    const response = await fetch(`${API_URL}/admin/subscription-plans`, {
+    const qs = request.nextUrl.search;
+    const response = await fetch(`${API_URL}/admin/subscription-plans${qs}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -25,7 +30,7 @@ export async function GET(request: NextRequest) {
       }
     }).catch((fetchError) => {
       console.error('❌ Fetch error when calling backend API:', {
-        url: `${API_URL}/admin/subscription-plans`,
+        url: `${API_URL}/admin/subscription-plans${qs}`,
         error:
           fetchError instanceof Error ? fetchError.message : String(fetchError),
         apiUrl: API_URL
@@ -73,16 +78,11 @@ export async function GET(request: NextRequest) {
 
     const rawData = await response.json();
 
-    // Handle response format - backend can return either:
-    // 1. Direct array: [...]
-    // 2. Wrapped object: { status, message, data: [...] }
     let plansData: unknown[] = [];
 
     if (Array.isArray(rawData)) {
-      // Direct array response
       plansData = rawData;
     } else if (rawData.data && Array.isArray(rawData.data)) {
-      // Wrapped response with data field
       plansData = rawData.data;
     }
 
@@ -112,15 +112,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /admin/subscription-plans - Create new subscription plan
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate required fields (backend does not accept tokensIncluded on plan)
     const { name, price, period } = body;
 
-    if (!name || price === undefined || !period) {
+    if (!hasTranslatableContent(name) || price === undefined || !period) {
       return NextResponse.json(
         {
           status: 400,
@@ -130,21 +128,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get authorization token from request
     const authHeader =
       request.headers.get('authorization') ||
       (request.cookies.get('access_token')?.value
         ? `Bearer ${request.cookies.get('access_token')?.value}`
         : '');
 
-    // Forward request to backend API
     const API_URL = (
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
     const requestData = {
-      name: name.trim(),
-      description: body.description || null,
+      name: trimTranslatableForBackend(name),
+      description: trimNullableTranslatableForBackend(body.description),
       price: Number(price),
       period: period,
       trialDays: body.trialDays || 0,
@@ -152,7 +148,8 @@ export async function POST(request: NextRequest) {
       isDefault: body.isDefault !== undefined ? body.isDefault : false
     };
 
-    const response = await fetch(`${API_URL}/admin/subscription-plans`, {
+    const qsPost = request.nextUrl.search;
+    const response = await fetch(`${API_URL}/admin/subscription-plans${qsPost}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -197,7 +194,6 @@ export async function POST(request: NextRequest) {
 
     const rawData = await response.json();
 
-    // Handle response format
     let planData = null;
 
     if (rawData.data) {

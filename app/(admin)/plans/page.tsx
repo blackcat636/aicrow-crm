@@ -6,6 +6,8 @@ import { useSubscriptionPlansStore } from "@/store/useSubscriptionPlansStore"
 import { CreateEditPlanDialog } from "@/components/plans/create-edit-plan-dialog"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { SubscriptionPlan } from "@/interface/SubscriptionPlan"
+import { ADMIN_DEFAULT_LOCALE, ADMIN_LOCALES } from "@/lib/config/admin-locales"
+import { normalizeFromApi, pickDisplayString } from "@/lib/translatable"
 import { Button } from "@/components/ui/button"
 import { deletePlan } from "@/lib/api/subscription-plans"
 import { toast } from "sonner"
@@ -46,12 +48,20 @@ export default function Page() {
   const [originalPlanIdForDuplication, setOriginalPlanIdForDuplication] = useState<number | null>(null)
 
   const handleDuplicate = useCallback((plan: SubscriptionPlan) => {
-    // Create a duplicate plan object with "Copy of" prefix
+    const nameLocales = normalizeFromApi(
+      plan.name,
+      ADMIN_DEFAULT_LOCALE,
+      ADMIN_LOCALES
+    )
+    const defName = nameLocales[ADMIN_DEFAULT_LOCALE]?.trim() ?? ""
     const duplicatedPlan: SubscriptionPlan = {
       ...plan,
-      id: 0, // Will be set by backend on creation
-      name: `Copy of ${plan.name}`,
-      isDefault: false, // Don't duplicate default flag
+      id: 0,
+      name: {
+        ...nameLocales,
+        [ADMIN_DEFAULT_LOCALE]: defName ? `Copy of ${defName}` : "Copy of",
+      },
+      isDefault: false,
     }
 
     // Store original plan ID for loading features
@@ -150,7 +160,11 @@ export default function Page() {
         onConfirm={handleDeleteConfirm}
         title="Delete subscription plan"
         description="This action cannot be undone. This will permanently delete the plan."
-        itemName={planToDelete?.name}
+        itemName={
+          planToDelete
+            ? pickDisplayString(planToDelete.name, ADMIN_DEFAULT_LOCALE)
+            : undefined
+        }
         isLoading={isDeleting}
       />
     </div>

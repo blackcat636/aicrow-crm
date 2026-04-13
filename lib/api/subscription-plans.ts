@@ -13,6 +13,8 @@ export interface SubscriptionPlanFilters {
   page?: number;
   limit?: number;
   isActive?: boolean;
+  /** Forwarded to backend query (e.g. include inactive plans). */
+  includeInactive?: boolean;
 }
 
 export async function getAllPlans(
@@ -29,8 +31,11 @@ export async function getAllPlans(
     params.append('isActive', isActive.toString());
   }
 
-  // Use Next.js API route instead of direct backend call
-  const url = `/api/admin/subscription-plans?${params}`;
+  if (filters.includeInactive !== undefined) {
+    params.append('includeInactive', String(filters.includeInactive));
+  }
+
+  const url = `/admin/subscription-plans?${params}`;
 
   try {
     const response = await fetchWithAuth(url);
@@ -110,11 +115,9 @@ export async function getAllPlans(
   }
 }
 
-export async function getPlanById(
-  id: number
-): Promise<SubscriptionPlanApiResponse> {
+export async function getPlanById(id: number): Promise<SubscriptionPlanApiResponse> {
   try {
-    const response = await fetchWithAuth(`/api/admin/subscription-plans/${id}`);
+    const response = await fetchWithAuth(`/admin/subscription-plans/${id}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch subscription plan with id ${id}`);
     }
@@ -155,7 +158,7 @@ export async function createPlan(
   planData: CreatePlanRequest
 ): Promise<SubscriptionPlanApiResponse> {
   try {
-    const url = `/api/admin/subscription-plans`;
+    const url = `/admin/subscription-plans`;
     const requestBody = JSON.stringify(planData);
 
     const response = await fetchWithAuth(url, {
@@ -204,7 +207,7 @@ export async function updatePlan(
 ): Promise<SubscriptionPlanApiResponse> {
   try {
     const response = await fetchWithAuth(
-      `/api/admin/subscription-plans/${id}`,
+      `/admin/subscription-plans/${id}`,
       {
         method: 'PUT',
         headers: {
@@ -230,7 +233,7 @@ export async function updatePlan(
 // Delete subscription plan
 export async function deletePlan(id: number): Promise<{ status: number; message: string }> {
   try {
-    const response = await fetchWithAuth(`/api/admin/subscription-plans/${id}`, {
+    const response = await fetchWithAuth(`/admin/subscription-plans/${id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -257,7 +260,7 @@ export async function getPlanFeatures(
 ): Promise<PlanFeaturesApiResponse> {
   try {
     const response = await fetchWithAuth(
-      `/api/admin/subscription-plans/${planId}/features`
+      `/admin/subscription-plans/${planId}/features`
     );
     if (!response.ok) {
       throw new Error(`Failed to fetch plan features for plan ${planId}`);
@@ -289,7 +292,7 @@ export async function updatePlanFeatures(
 ): Promise<PlanFeaturesApiResponse> {
   try {
     const response = await fetchWithAuth(
-      `/api/admin/subscription-plans/${planId}/features`,
+      `/admin/subscription-plans/${planId}/features`,
       {
         method: 'PUT',
         headers: {
@@ -335,7 +338,7 @@ export async function addPlanFeature(
 ): Promise<{ ok: boolean; status: number; message: string; data?: unknown }> {
   try {
     const response = await fetchWithAuth(
-      `/api/admin/subscription-plans/${planId}/features`,
+      `/admin/subscription-plans/${planId}/features`,
       {
         method: 'POST',
         headers: {

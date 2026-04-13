@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import {
+  normalizeNameForPut,
+  trimNullableTranslatableForPutPreserveEmpty
+} from '@/lib/translatable';
+
 export const runtime = 'edge';
 
-// GET /admin/subscription-plans/{id} - Get subscription plan by ID
+// Next route: /admin/subscription-plans/{id} → backend /admin/subscription-plans/{id}
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,19 +25,18 @@ export async function GET(
       );
     }
 
-    // Get authorization token from request
     const authHeader =
       request.headers.get('authorization') ||
       (request.cookies.get('access_token')?.value
         ? `Bearer ${request.cookies.get('access_token')?.value}`
         : '');
 
-    // Forward request to backend API
     const API_URL = (
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
-    const backendUrl = `${API_URL}/admin/subscription-plans/${id}`;
+    const qs = request.nextUrl.search;
+    const backendUrl = `${API_URL}/admin/subscription-plans/${id}${qs}`;
 
     const response = await fetch(backendUrl, {
       method: 'GET',
@@ -55,7 +59,6 @@ export async function GET(
 
     const rawData = await response.json();
 
-    // Handle response format
     let planData = null;
 
     if (rawData.data) {
@@ -84,7 +87,6 @@ export async function GET(
   }
 }
 
-// PUT /admin/subscription-plans/{id} - Update subscription plan
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -104,14 +106,12 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Get authorization token from request
     const authHeader =
       request.headers.get('authorization') ||
       (request.cookies.get('access_token')?.value
         ? `Bearer ${request.cookies.get('access_token')?.value}`
         : '');
 
-    // Forward request to backend API
     const API_URL = (
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
@@ -119,10 +119,18 @@ export async function PUT(
     const requestData: Record<string, unknown> = {};
 
     if (body.name !== undefined) {
-      requestData.name = body.name.trim();
+      const normalized = normalizeNameForPut(body.name);
+      if (typeof normalized === 'string') {
+        requestData.name = normalized;
+      } else {
+        requestData.name =
+          Object.keys(normalized).length > 0 ? normalized : '';
+      }
     }
     if (body.description !== undefined) {
-      requestData.description = body.description;
+      requestData.description = trimNullableTranslatableForPutPreserveEmpty(
+        body.description
+      );
     }
     if (body.price !== undefined) {
       requestData.price = Number(body.price);
@@ -140,7 +148,8 @@ export async function PUT(
       requestData.isDefault = body.isDefault;
     }
 
-    const backendUrl = `${API_URL}/admin/subscription-plans/${id}`;
+    const qsPut = request.nextUrl.search;
+    const backendUrl = `${API_URL}/admin/subscription-plans/${id}${qsPut}`;
 
     const response = await fetch(backendUrl, {
       method: 'PUT',
@@ -181,7 +190,6 @@ export async function PUT(
 
     const rawData = await response.json();
 
-    // Handle response format
     let planData = null;
 
     if (rawData.data) {
@@ -213,7 +221,6 @@ export async function PUT(
   }
 }
 
-// DELETE /admin/subscription-plans/{id} - Delete subscription plan
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

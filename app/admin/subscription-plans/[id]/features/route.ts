@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
-// GET /admin/subscription-plans/{id}/features - Get plan features
+// Next route: /admin/subscription-plans/{id}/features → backend same path
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,19 +20,18 @@ export async function GET(
       );
     }
 
-    // Get authorization token from request
     const authHeader =
       request.headers.get('authorization') ||
       (request.cookies.get('access_token')?.value
         ? `Bearer ${request.cookies.get('access_token')?.value}`
         : '');
 
-    // Forward request to backend API
     const API_URL = (
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
-    const backendUrl = `${API_URL}/admin/subscription-plans/${id}/features`;
+    const qs = request.nextUrl.search;
+    const backendUrl = `${API_URL}/admin/subscription-plans/${id}/features${qs}`;
 
     const response = await fetch(backendUrl, {
       method: 'GET',
@@ -55,7 +54,6 @@ export async function GET(
 
     const rawData = await response.json();
 
-    // Handle response format
     let featuresData: unknown[] = [];
 
     if (Array.isArray(rawData)) {
@@ -84,7 +82,6 @@ export async function GET(
   }
 }
 
-// PUT /admin/subscription-plans/{id}/features - Update plan features
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -114,19 +111,18 @@ export async function PUT(
       );
     }
 
-    // Get authorization token from request
     const authHeader =
       request.headers.get('authorization') ||
       (request.cookies.get('access_token')?.value
         ? `Bearer ${request.cookies.get('access_token')?.value}`
         : '');
 
-    // Forward request to backend API
     const API_URL = (
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3010'
     ).replace(/\/+$/, '');
 
-    const backendUrl = `${API_URL}/admin/subscription-plans/${id}/features`;
+    const qsPut = request.nextUrl.search;
+    const backendUrl = `${API_URL}/admin/subscription-plans/${id}/features${qsPut}`;
 
     const response = await fetch(backendUrl, {
       method: 'PUT',
@@ -169,7 +165,6 @@ export async function PUT(
 
     const rawData = await response.json();
 
-    // Handle response format
     let featuresData: unknown[] = [];
 
     if (Array.isArray(rawData)) {
